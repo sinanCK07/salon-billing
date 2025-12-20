@@ -31,6 +31,8 @@ export const HistoryList: React.FC = () => {
         XLSX.writeFile(wb, `billing_history_${new Date().toISOString().split('T')[0]}.xlsx`);
     };
 
+    const totalRevenue = bills.reduce((sum, bill) => sum + bill.grandTotal, 0);
+
     if (bills.length === 0) {
         return (
             <div className="flex flex-col items-center justify-center h-64 text-gray-400">
@@ -40,11 +42,19 @@ export const HistoryList: React.FC = () => {
         );
     }
 
-    // TODO: Add click to view bill details (reuse BillPreview by accepting bill maybe? or simple view)
-    // For now just list.
-
     return (
         <div className="space-y-4 pb-20">
+            {/* Total Business Summary Card */}
+            <div className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-lg p-5 text-white shadow-lg mb-6">
+                <p className="text-purple-100 text-sm font-medium mb-1">Total Business</p>
+                <h2 className="text-3xl font-bold">
+                    {settings.currencySymbol}{totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </h2>
+                <p className="text-xs text-purple-200 mt-2 opacity-80">
+                    Across {bills.length} bills
+                </p>
+            </div>
+
             <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-bold text-gray-800">History</h2>
                 <div className="flex gap-2">

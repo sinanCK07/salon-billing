@@ -110,6 +110,43 @@ export const SettingsForm: React.FC = () => {
                     />
                 </div>
 
+                {/* GST Number */}
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">GST Number</label>
+                    <input
+                        type="text"
+                        name="gstNumber"
+                        value={formData.gstNumber || ''}
+                        onChange={handleChange}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:outline-none transition-shadow"
+                        placeholder="GSTIN..."
+                    />
+                </div>
+
+                {/* Social Links */}
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Google Review Link</label>
+                    <input
+                        type="url"
+                        name="googleReviewLink"
+                        value={formData.googleReviewLink || ''}
+                        onChange={handleChange}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:outline-none transition-shadow"
+                        placeholder="https://g.page/..."
+                    />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Instagram Profile Link</label>
+                    <input
+                        type="url"
+                        name="instagramLink"
+                        value={formData.instagramLink || ''}
+                        onChange={handleChange}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:outline-none transition-shadow"
+                        placeholder="https://instagram.com/..."
+                    />
+                </div>
+
                 {/* Tax Settings */}
                 <div className="bg-gray-100 p-4 rounded-lg space-y-3">
                     <div className="flex items-center justify-between">

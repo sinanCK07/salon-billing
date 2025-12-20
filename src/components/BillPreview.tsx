@@ -28,7 +28,11 @@ export const BillPreview: React.FC<BillPreviewProps> = ({ bill, settings, onClos
         msg += `Subtotal: ${settings.currencySymbol}${bill.subtotal}\n`;
         if (bill.taxAmount > 0) msg += `Tax (${settings.taxRate}%): ${settings.currencySymbol}${bill.taxAmount.toFixed(2)}\n`;
         if (bill.discount > 0) msg += `Discount: -${settings.currencySymbol}${bill.discount}\n`;
-        msg += `*Total Amount: ${settings.currencySymbol}${bill.grandTotal.toFixed(2)}*\n`;
+        msg += `*Total Amount: ${settings.currencySymbol}${bill.grandTotal.toFixed(2)}*\n\n`;
+
+        if (settings.googleReviewLink) msg += `⭐ *Review us on Google:* ${settings.googleReviewLink}\n`;
+        if (settings.instagramLink) msg += `📸 *Follow us on Instagram:* ${settings.instagramLink}\n`;
+
         msg += `\nThank you for visiting! ✨`;
         return encodeURIComponent(msg);
     };
@@ -62,6 +66,11 @@ export const BillPreview: React.FC<BillPreviewProps> = ({ bill, settings, onClos
                         <div className="mt-2 text-xs text-gray-400">
                             Bill #{bill.billNumber} • {new Date(bill.date).toLocaleString()}
                         </div>
+                        {settings.gstNumber && (
+                            <div className="text-[10px] text-gray-400 mt-1 uppercase">
+                                GSTIN: {settings.gstNumber}
+                            </div>
+                        )}
                     </div>
 
                     <div className="mb-4">

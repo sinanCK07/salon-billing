@@ -10,6 +10,9 @@ export interface SalonSettings {
     enableTax: boolean;
     currencySymbol: string;
     predefinedServices: { id: string; name: string; price: number }[];
+    gstNumber?: string;
+    googleReviewLink?: string;
+    instagramLink?: string;
 }
 
 const defaultSettings: SalonSettings = {
@@ -21,6 +24,9 @@ const defaultSettings: SalonSettings = {
     enableTax: false,
     currencySymbol: "₹",
     predefinedServices: [],
+    gstNumber: "",
+    googleReviewLink: "",
+    instagramLink: "",
 };
 
 const SalonSettingsContext = createContext<{

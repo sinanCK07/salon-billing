@@ -97,6 +97,28 @@ export const BillingForm: React.FC = () => {
 
         addBill(newBill);
         setGeneratedBill(newBill);
+
+        // Auto Print if in Electron
+        if (window.electron) {
+            window.electron.printBill({
+                salonName: settings.salonName,
+                address: settings.address,
+                gstNumber: settings.gstNumber,
+                billNumber: newBill.billNumber,
+                date: new Date(newBill.date).toLocaleString(),
+                items: newBill.services.map(s => ({
+                    name: s.name,
+                    qty: s.quantity,
+                    total: s.price * s.quantity
+                })),
+                subtotal: newBill.subtotal.toFixed(2),
+                tax: newBill.taxAmount.toFixed(2),
+                discount: newBill.discount.toFixed(2),
+                grandTotal: newBill.grandTotal.toFixed(2)
+            }).catch(err => {
+                alert("Printer Error: " + err);
+            });
+        }
     };
 
     const handleReset = () => {
