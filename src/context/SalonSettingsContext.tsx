@@ -66,7 +66,8 @@ export const SalonSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
         });
     };
 
-    // Firebase Sync for Services
+    // Firebase Sync for Services - Disabled for local-first use
+    /*
     useEffect(() => {
         const unsubscribe = firebaseService.subscribeToServices((firebaseServices) => {
             if (firebaseServices.length > 0) {
@@ -78,6 +79,7 @@ export const SalonSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
         });
         return () => unsubscribe();
     }, []);
+    */
 
     return (
         <SalonSettingsContext.Provider value={{ settings, updateSettings }}>

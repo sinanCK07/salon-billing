@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { firebaseService } from '../lib/firebaseService';
+
 
 export interface ServiceItem {
     id: string;
@@ -18,6 +18,7 @@ export interface Bill {
     subtotal: number;
     taxAmount: number;
     discount: number;
+    discountReason?: string;
     grandTotal: number;
 }
 
@@ -37,7 +38,8 @@ export const BillHistoryProvider: React.FC<{ children: React.ReactNode }> = ({ c
         localStorage.setItem('bill_history', JSON.stringify(bills));
     }, [bills]);
 
-    // Firebase Sync
+    // Firebase Sync disabled for local-first single-device use
+    /*
     useEffect(() => {
         const unsubscribe = firebaseService.subscribeToBills((firebaseBills) => {
             if (firebaseBills.length > 0) {
@@ -47,14 +49,18 @@ export const BillHistoryProvider: React.FC<{ children: React.ReactNode }> = ({ c
         });
         return () => unsubscribe();
     }, []);
+    */
 
     const addBill = async (bill: Bill) => {
         setBills(prev => [bill, ...prev]);
+        // Firebase sync disabled for local-first use
+        /*
         try {
             await firebaseService.saveBill(bill);
         } catch (error) {
             console.warn("Firebase sync failed, saved locally", error);
         }
+        */
     };
 
     const clearHistory = () => {

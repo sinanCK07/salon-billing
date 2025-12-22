@@ -21,6 +21,7 @@ export const BillingForm: React.FC = () => {
         { id: '1', name: '', price: 0, quantity: 1 }
     ]);
     const [discount, setDiscount] = useState(0);
+    const [discountReason, setDiscountReason] = useState('');
 
     // Computed Totals
     const subtotal = useMemo(() => {
@@ -110,6 +111,7 @@ export const BillingForm: React.FC = () => {
             subtotal,
             taxAmount,
             discount,
+            discountReason: discount > 0 ? discountReason : '',
             grandTotal
         };
 
@@ -149,6 +151,7 @@ export const BillingForm: React.FC = () => {
         setCustomerPhone('');
         setServices([{ id: Date.now().toString(), name: '', price: 0, quantity: 1 }]);
         setDiscount(0);
+        setDiscountReason('');
         setGeneratedBill(null);
     }
 
@@ -279,6 +282,20 @@ export const BillingForm: React.FC = () => {
                                 />
                             </div>
                         </div>
+
+                        {discount > 0 && (
+                            <div className="flex flex-col space-y-2 border-t pt-2">
+                                <label className="text-xs font-semibold text-purple-600">Discount Reason (Internal only)</label>
+                                <input
+                                    type="text"
+                                    placeholder="e.g. Regular customer, Festival offer"
+                                    className="w-full px-3 py-2 border rounded-lg text-sm bg-purple-50 focus:outline-none focus:ring-1 focus:ring-purple-400"
+                                    value={discountReason}
+                                    onChange={e => setDiscountReason(e.target.value)}
+                                />
+                            </div>
+                        )}
+
                         <div className="flex justify-between text-lg font-bold text-gray-800 border-t pt-2">
                             <span>Total</span>
                             <span>{settings.currencySymbol}{grandTotal.toFixed(2)}</span>

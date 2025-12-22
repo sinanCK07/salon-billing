@@ -22,6 +22,7 @@ export const HistoryList: React.FC = () => {
             'Subtotal': bill.subtotal,
             'Tax': bill.taxAmount,
             'Discount': bill.discount,
+            'Discount Reason': bill.discountReason || '',
             'Grand Total': bill.grandTotal
         }));
 
@@ -110,6 +111,11 @@ export const HistoryList: React.FC = () => {
                         <div className="text-sm text-gray-600 truncate">
                             {bill.services.map(s => s.name).join(', ')}
                         </div>
+                        {bill.discountReason && (
+                            <div className="mt-2 text-xs bg-purple-50 text-purple-600 px-2 py-1 rounded inline-block">
+                                Reason: {bill.discountReason}
+                            </div>
+                        )}
                     </div>
                 ))}
             </div>
