@@ -1,11 +1,11 @@
 import React from 'react';
-import { Receipt, History, Settings } from 'lucide-react';
+import { Receipt, History, Settings, LayoutDashboard } from 'lucide-react';
 import { useSalonSettings } from '../context/SalonSettingsContext';
 
 interface LayoutProps {
     children: React.ReactNode;
-    currentView: 'billing' | 'history' | 'settings';
-    onNavigate: (view: 'billing' | 'history' | 'settings') => void;
+    currentView: 'billing' | 'history' | 'settings' | 'dashboard';
+    onNavigate: (view: 'billing' | 'history' | 'settings' | 'dashboard') => void;
 }
 
 export default function AppLayout({ children, currentView, onNavigate }: LayoutProps) {
@@ -35,6 +35,14 @@ export default function AppLayout({ children, currentView, onNavigate }: LayoutP
 
             {/* Bottom Navigation */}
             <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around p-2 z-20 pb-safe">
+                <button
+                    onClick={() => onNavigate('dashboard')}
+                    className={`flex flex-col items-center p-2 rounded-lg transition-colors ${currentView === 'dashboard' ? 'text-purple-600' : 'text-gray-400 hover:text-gray-600'
+                        }`}
+                >
+                    <LayoutDashboard size={24} />
+                    <span className="text-xs font-medium mt-1">Dash</span>
+                </button>
                 <button
                     onClick={() => onNavigate('billing')}
                     className={`flex flex-col items-center p-2 rounded-lg transition-colors ${currentView === 'billing' ? 'text-purple-600' : 'text-gray-400 hover:text-gray-600'

@@ -35,23 +35,46 @@ export const BillingForm: React.FC = () => {
         return Math.max(0, subtotal + taxAmount - discount);
     }, [subtotal, taxAmount, discount]);
 
+    // Refs for auto-focus
+    const serviceNameRefs = React.useRef<{ [key: string]: HTMLInputElement | null }>({});
+
     // Handlers
     const handleServiceChange = (id: string, field: keyof ServiceItem, value: string | number) => {
-        setServices(prev => prev.map(s => {
-            if (s.id !== id) return s;
+        setServices(prev => {
+            const index = prev.findIndex(s => s.id === id);
+            const updated = prev.map(s => {
+                if (s.id !== id) return s;
 
-            const updatedService = { ...s, [field]: value };
+                const updatedService = { ...s, [field]: value };
 
-            // Auto-fill price if name matches a predefined service
-            if (field === 'name') {
-                const matchedService = settings.predefinedServices?.find(ps => ps.name === value);
-                if (matchedService) {
-                    updatedService.price = matchedService.price;
+                // Auto-fill price if name matches a predefined service
+                if (field === 'name') {
+                    const matchedService = settings.predefinedServices?.find(ps => ps.name === value);
+                    if (matchedService) {
+                        updatedService.price = matchedService.price;
+                    }
                 }
+
+                return updatedService;
+            });
+
+            // Fast Billing Logic: If this is the last row and name is selected, 
+            // or if Price/Qty is entered, and we want to auto-open next row.
+            const currentItem = updated[index];
+            const isLast = index === updated.length - 1;
+
+            if (isLast && (field === 'name' && currentItem.name.length > 2)) {
+                // We add a row automatically
+                const nextId = Date.now().toString();
+                setTimeout(() => {
+                    const nextInput = serviceNameRefs.current[nextId];
+                    if (nextInput) nextInput.focus();
+                }, 10);
+                return [...updated, { id: nextId, name: '', price: 0, quantity: 1 }];
             }
 
-            return updatedService;
-        }));
+            return updated;
+        });
     };
 
     const addServiceRow = () => {
@@ -177,6 +200,7 @@ export const BillingForm: React.FC = () => {
                             <div key={service.id} className="flex gap-2 items-center">
                                 <div className="flex-1 space-y-2">
                                     <input
+                                        ref={el => { serviceNameRefs.current[service.id] = el; }}
                                         type="text"
                                         list={`services-${service.id}`}
                                         placeholder="Service Name"

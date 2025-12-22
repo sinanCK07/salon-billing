@@ -116,8 +116,12 @@ ipcMain.handle('print-bill', async (event, billData) => {
                     .size(0, 0)
                     .align('ct')
                     .text('--------------------------------')
-                    .text('Thank you for visiting!')
-                    .feed(3) // Feed paper to ensure footer clears the cutter
+                    .text(`Date: ${billData.date.split(',')[0].trim()}`)
+                    .text(`Time: ${billData.date.split(',')[1]?.trim() || ''}`)
+                    .feed(1)
+                    .style('b')
+                    .text('Thank You 🙏')
+                    .feed(3)
                     .cut()
                     .close();
 

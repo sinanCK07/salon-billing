@@ -64,7 +64,7 @@ export const BillPreview: React.FC<BillPreviewProps> = ({ bill, settings, onClos
                         <h2 className="text-2xl font-bold text-purple-700">{settings.salonName}</h2>
                         <p className="text-sm text-gray-500">{settings.address}</p>
                         <div className="mt-2 text-xs text-gray-400">
-                            Bill #{bill.billNumber} • {new Date(bill.date).toLocaleString()}
+                            Bill #{bill.billNumber}
                         </div>
                         {settings.gstNumber && (
                             <div className="text-[10px] text-gray-400 mt-1 uppercase">
@@ -120,8 +120,13 @@ export const BillPreview: React.FC<BillPreviewProps> = ({ bill, settings, onClos
                         </div>
                     </div>
 
-                    <div className="mt-8 text-center text-xs text-gray-400">
-                        Thank you for your business!
+                    <div className="mt-8 pt-4 border-t border-gray-50 text-center">
+                        <div className="text-[10px] text-gray-400 mb-2">
+                            Date: {new Date(bill.date).toLocaleDateString()}
+                            <br />
+                            Time: {new Date(bill.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                        <p className="text-gray-800 font-medium">Thank You 🙏</p>
                     </div>
                 </div>
 

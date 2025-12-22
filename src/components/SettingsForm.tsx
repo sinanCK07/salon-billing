@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useSalonSettings } from '../context/SalonSettingsContext';
 import type { SalonSettings } from '../context/SalonSettingsContext';
-import { Save } from 'lucide-react';
+import { Save, Lock } from 'lucide-react';
+import { hashPassword } from '../utils/crypto';
 
 export const SettingsForm: React.FC = () => {
     const { settings, updateSettings } = useSalonSettings();
@@ -236,6 +237,55 @@ export const SettingsForm: React.FC = () => {
                             <p className="text-sm text-gray-400 text-center py-2">No predefined services added.</p>
                         )}
                     </div>
+                </div>
+
+                {/* Password Protection */}
+                <div className="bg-purple-50 p-4 rounded-lg space-y-3 border border-purple-100">
+                    <h3 className="font-semibold text-purple-800 flex items-center gap-2">
+                        <Lock size={18} />
+                        <span>Security</span>
+                    </h3>
+                    <p className="text-xs text-purple-600">
+                        {formData.settingsPassword
+                            ? "Settings are protected by a password."
+                            : "Set a password to protect your settings from unauthorized access."}
+                    </p>
+                    <div className="flex gap-2">
+                        <input
+                            type="password"
+                            placeholder={formData.settingsPassword ? "Change Password" : "Set Password"}
+                            className="flex-1 px-4 py-2 border border-purple-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                            id="new-password"
+                        />
+                        <button
+                            type="button"
+                            onClick={async () => {
+                                const input = document.getElementById('new-password') as HTMLInputElement;
+                                if (input.value) {
+                                    const hashed = await hashPassword(input.value);
+                                    setFormData(prev => ({ ...prev, settingsPassword: hashed }));
+                                    input.value = '';
+                                    alert('Password applied! Remember to click "Save Settings" below.');
+                                }
+                            }}
+                            className="px-4 py-2 bg-purple-600 text-white rounded-lg text-xs font-bold hover:bg-purple-700 transition-colors"
+                        >
+                            Apply
+                        </button>
+                    </div>
+                    {formData.settingsPassword && (
+                        <button
+                            type="button"
+                            onClick={() => {
+                                if (confirm('Are you sure you want to remove the password?')) {
+                                    setFormData(prev => ({ ...prev, settingsPassword: '' }));
+                                }
+                            }}
+                            className="text-red-500 text-[10px] hover:underline"
+                        >
+                            Remove Password Protection
+                        </button>
+                    )}
                 </div>
 
                 {/* Submit */}

@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { firebaseService } from '../lib/firebaseService';
 
 // Define the shape of our settings
 export interface SalonSettings {
@@ -13,6 +14,7 @@ export interface SalonSettings {
     gstNumber?: string;
     googleReviewLink?: string;
     instagramLink?: string;
+    settingsPassword?: string; // Hashed password
 }
 
 const defaultSettings: SalonSettings = {
@@ -27,6 +29,7 @@ const defaultSettings: SalonSettings = {
     gstNumber: "",
     googleReviewLink: "",
     instagramLink: "",
+    settingsPassword: "", // Default: No password
 };
 
 const SalonSettingsContext = createContext<{
@@ -44,9 +47,37 @@ export const SalonSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
         localStorage.setItem('salon_settings', JSON.stringify(settings));
     }, [settings]);
 
-    const updateSettings = (newSettings: Partial<SalonSettings>) => {
-        setSettings(prev => ({ ...prev, ...newSettings }));
+    const updateSettings = async (newSettings: Partial<SalonSettings>) => {
+        setSettings(prev => {
+            const updated = { ...prev, ...newSettings };
+
+            // Sync predefined services to Firebase
+            if (newSettings.predefinedServices) {
+                newSettings.predefinedServices.forEach(async (service) => {
+                    try {
+                        await firebaseService.saveService(service);
+                    } catch (e) {
+                        console.warn("Service sync failed", e);
+                    }
+                });
+            }
+
+            return updated;
+        });
     };
+
+    // Firebase Sync for Services
+    useEffect(() => {
+        const unsubscribe = firebaseService.subscribeToServices((firebaseServices) => {
+            if (firebaseServices.length > 0) {
+                setSettings(prev => ({
+                    ...prev,
+                    predefinedServices: firebaseServices
+                }));
+            }
+        });
+        return () => unsubscribe();
+    }, []);
 
     return (
         <SalonSettingsContext.Provider value={{ settings, updateSettings }}>
