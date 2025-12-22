@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useSalonSettings } from '../context/SalonSettingsContext';
 import { hashPassword } from '../utils/crypto';
 import { Lock, Unlock, AlertCircle } from 'lucide-react';
@@ -8,7 +8,7 @@ interface SettingsLockProps {
 }
 
 export const SettingsLock: React.FC<SettingsLockProps> = ({ children }) => {
-    const { settings } = useSalonSettings();
+    const { settings, updateSettings } = useSalonSettings();
     const [isLocked, setIsLocked] = useState(!!settings.settingsPassword);
     const [passwordInput, setPasswordInput] = useState('');
     const [error, setError] = useState('');
@@ -37,12 +37,11 @@ export const SettingsLock: React.FC<SettingsLockProps> = ({ children }) => {
         }
     };
 
-    const handleResetPassword = () => {
+    const handleResetPassword = async () => {
         if (confirm('For security, resetting will clear the password protection. Are you sure?')) {
-            // This matches the user's manual reset command
-            const updatedSettings = { ...settings, settingsPassword: '' };
-            localStorage.setItem('salon_settings', JSON.stringify(updatedSettings));
-            window.location.reload();
+            await updateSettings({ settingsPassword: '' });
+            setIsLocked(false);
+            // No reload needed now as state updates everything automatically
         }
     };
 

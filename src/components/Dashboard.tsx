@@ -2,7 +2,7 @@ import React from 'react';
 import { useBillHistory } from '../context/BillHistoryContext';
 import { useSalonSettings } from '../context/SalonSettingsContext';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { TrendingUp, Users, Receipt } from 'lucide-react';
+import { TrendingUp, Receipt } from 'lucide-react';
 
 export const Dashboard: React.FC = () => {
     const { bills } = useBillHistory();
@@ -16,7 +16,7 @@ export const Dashboard: React.FC = () => {
     // Prepare Chart Data (last 7 bills or grouped by hour today)
     // For simplicity, let's show the last 10 bills' totals sequentially
     const chartData = todayBills.length > 0
-        ? todayBills.reverse().map((b, i) => ({
+        ? todayBills.reverse().map((b) => ({
             name: new Date(b.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             total: b.grandTotal
         }))
