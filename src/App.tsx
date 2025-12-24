@@ -18,9 +18,17 @@ function App() {
     <SalonSettingsProvider>
       <BillHistoryProvider>
         <AppLayout currentView={currentView} onNavigate={setCurrentView}>
-          {currentView === 'dashboard' && <Dashboard />}
+          {currentView === 'dashboard' && (
+            <SettingsLock>
+              <Dashboard />
+            </SettingsLock>
+          )}
           {currentView === 'billing' && <BillingForm />}
-          {currentView === 'history' && <HistoryList />}
+          {currentView === 'history' && (
+            <SettingsLock>
+              <HistoryList />
+            </SettingsLock>
+          )}
           {currentView === 'settings' && (
             <SettingsLock>
               <SettingsForm />

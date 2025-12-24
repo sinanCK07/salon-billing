@@ -13,8 +13,8 @@ export const BillingForm: React.FC = () => {
     // Customer State
     const [customerName, setCustomerName] = useState('');
     const [customerPhone, setCustomerPhone] = useState('');
-    const [billDate, setBillDate] = useState(new Date().toISOString().split('T')[0]);
-    const [billTime, setBillTime] = useState(new Date().toTimeString().slice(0, 5));
+    const [billDate] = useState(new Date().toISOString().split('T')[0]);
+    const [billTime] = useState(new Date().toTimeString().slice(0, 5));
 
     // Services State
     const [services, setServices] = useState<ServiceItem[]>([
@@ -161,6 +161,28 @@ export const BillingForm: React.FC = () => {
                 <h2 className="text-xl font-bold text-gray-800">New Bill</h2>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
+                    {/* Date and Time (Read-only) */}
+                    <div className="flex gap-4 items-center bg-gray-50 p-3 rounded-lg border border-gray-100">
+                        <div className="flex-1">
+                            <label className="block text-[10px] uppercase font-bold text-gray-400 mb-1 ml-1">Bill Date</label>
+                            <input
+                                type="date"
+                                readOnly
+                                className="w-full px-4 py-2 border rounded-lg bg-white text-gray-500 cursor-not-allowed focus:outline-none text-sm"
+                                value={billDate}
+                            />
+                        </div>
+                        <div className="w-32">
+                            <label className="block text-[10px] uppercase font-bold text-gray-400 mb-1 ml-1">Bill Time</label>
+                            <input
+                                type="time"
+                                readOnly
+                                className="w-full px-4 py-2 border rounded-lg bg-white text-gray-500 cursor-not-allowed focus:outline-none text-sm"
+                                value={billTime}
+                            />
+                        </div>
+                    </div>
+
                     {/* Customer Details */}
                     <div className="bg-white p-4 rounded-lg shadow-sm space-y-3">
                         <h3 className="font-semibold text-gray-700">Customer Details</h3>
@@ -179,20 +201,6 @@ export const BillingForm: React.FC = () => {
                                 value={customerPhone}
                                 onChange={e => setCustomerPhone(e.target.value)}
                             />
-                            <div className="flex gap-2">
-                                <input
-                                    type="date"
-                                    className="flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                                    value={billDate}
-                                    onChange={e => setBillDate(e.target.value)}
-                                />
-                                <input
-                                    type="time"
-                                    className="w-32 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                                    value={billTime}
-                                    onChange={e => setBillTime(e.target.value)}
-                                />
-                            </div>
                         </div>
                     </div>
 

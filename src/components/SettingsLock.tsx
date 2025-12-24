@@ -30,7 +30,7 @@ export const SettingsLock: React.FC<SettingsLockProps> = ({ children }) => {
             } else {
                 setError('Incorrect password');
             }
-        } catch (err) {
+        } catch {
             setError('Encryption error');
         } finally {
             setIsChecking(false);
