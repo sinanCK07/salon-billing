@@ -1,13 +1,16 @@
 import React, { useState } from 'react';
 import { useSalonSettings } from '../context/SalonSettingsContext';
 import type { SalonSettings } from '../context/SalonSettingsContext';
-import { Save, Lock } from 'lucide-react';
+import { useBillHistory } from '../context/BillHistoryContext';
+import { Save, Lock, Trash2, AlertTriangle, Camera } from 'lucide-react';
 import { hashPassword } from '../utils/crypto';
 
 export const SettingsForm: React.FC = () => {
     const { settings, updateSettings } = useSalonSettings();
+    const { clearHistory } = useBillHistory();
     const [formData, setFormData] = useState<SalonSettings>(settings);
     const [message, setMessage] = useState('');
+    const hasUnsavedChanges = JSON.stringify(formData) !== JSON.stringify(settings);
 
     // Service Menu State
     const [newService, setNewService] = useState({ name: '', price: '' });
@@ -45,6 +48,17 @@ export const SettingsForm: React.FC = () => {
             ...prev,
             [name]: type === 'checkbox' ? checked : value
         }));
+    };
+
+    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setFormData(prev => ({ ...prev, globalOfferImageBase64: reader.result as string }));
+            };
+            reader.readAsDataURL(file);
+        }
     };
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -239,6 +253,37 @@ export const SettingsForm: React.FC = () => {
                     </div>
                 </div>
 
+                {/* Global Offer Image Attachment */}
+                <div className="bg-white p-4 border rounded-lg space-y-3">
+                    <div className="flex justify-between items-center">
+                        <h3 className="font-semibold text-gray-700">Global Offer/Deal Banner</h3>
+                        {formData.globalOfferImageBase64 && (
+                            <button
+                                type="button"
+                                onClick={() => setFormData(prev => ({ ...prev, globalOfferImageBase64: '' }))}
+                                className="text-[10px] text-red-500 font-bold uppercase"
+                            >
+                                Remove
+                            </button>
+                        )}
+                    </div>
+
+                    {!formData.globalOfferImageBase64 ? (
+                        <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors">
+                            <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                                <Camera className="w-8 h-8 text-gray-300 mb-2" />
+                                <p className="text-xs text-gray-400">Click to upload global banner</p>
+                            </div>
+                            <input type="file" className="hidden" accept="image/*" onChange={handleImageUpload} />
+                        </label>
+                    ) : (
+                        <div className="relative rounded-xl overflow-hidden border border-gray-100">
+                            <img src={formData.globalOfferImageBase64} alt="Global Offer" className="w-full h-32 object-contain bg-gray-50" />
+                        </div>
+                    )}
+                    <p className="text-[10px] text-gray-400 italic">This image will be automatically attached to every new bill sharing message.</p>
+                </div>
+
                 {/* Password Protection */}
                 <div className="bg-purple-50 p-4 rounded-lg space-y-3 border border-purple-100">
                     <h3 className="font-semibold text-purple-800 flex items-center gap-2">
@@ -297,8 +342,44 @@ export const SettingsForm: React.FC = () => {
                     <span>Save Settings</span>
                 </button>
 
+                {hasUnsavedChanges && (
+                    <p className="text-[10px] text-orange-500 text-center font-bold uppercase animate-pulse">
+                        ⚠️ You have unsaved changes
+                    </p>
+                )}
+
                 {message && (
-                    <div className="p-3 bg-green-100 text-green-700 rounded-lg text-center animate-pulse">
+                    <div className="p-3 bg-green-100 text-green-700 rounded-lg text-center animate-pulse mt-4">
+                        {message}
+                    </div>
+                )}
+
+                {/* Reset Data Section */}
+                <div className="bg-red-50 p-4 rounded-lg space-y-3 border border-red-100 mt-6">
+                    <h3 className="font-semibold text-red-800 flex items-center gap-2">
+                        <AlertTriangle size={18} />
+                        <span>Danger Zone</span>
+                    </h3>
+                    <p className="text-xs text-red-600">
+                        This action will permanently delete all bill history. This cannot be undone.
+                    </p>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            if (confirm('CRITICAL: Are you sure you want to PERMANENTLY CLEAR all bill history? This action is irreversible.')) {
+                                clearHistory();
+                                alert('All history has been cleared.');
+                            }
+                        }}
+                        className="w-full py-2 bg-red-600 text-white rounded-lg text-xs font-bold hover:bg-red-700 transition-colors flex items-center justify-center gap-2 shadow-sm"
+                    >
+                        <Trash2 size={14} />
+                        <span>Reset All Bill History</span>
+                    </button>
+                </div>
+
+                {message && (
+                    <div className="p-3 bg-green-100 text-green-700 rounded-lg text-center animate-pulse mt-4">
                         {message}
                     </div>
                 )}

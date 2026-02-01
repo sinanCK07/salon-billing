@@ -1,8 +1,32 @@
 import React from 'react';
 import { useBillHistory } from '../context/BillHistoryContext';
 import { useSalonSettings } from '../context/SalonSettingsContext';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { TrendingUp } from 'lucide-react';
+import { TrendingUp, Banknote, CreditCard, Smartphone } from 'lucide-react';
+import {
+    Chart as ChartJS,
+    CategoryScale,
+    LinearScale,
+    BarElement,
+    Title,
+    Tooltip,
+    Legend,
+    ArcElement,
+    PointElement,
+    LineElement,
+} from 'chart.js';
+import { Bar, Pie } from 'react-chartjs-2';
+
+ChartJS.register(
+    CategoryScale,
+    LinearScale,
+    BarElement,
+    Title,
+    Tooltip,
+    Legend,
+    ArcElement,
+    PointElement,
+    LineElement
+);
 
 export const Dashboard: React.FC = () => {
     const { bills } = useBillHistory();
@@ -17,6 +41,10 @@ export const Dashboard: React.FC = () => {
     const todayBills = bills.filter(b => b.date.startsWith(todayStr));
     const todayRevenue = todayBills.reduce((sum, b) => sum + b.grandTotal, 0);
 
+    const todayCash = todayBills.filter(b => b.paymentMethod === 'cash').reduce((sum, b) => sum + b.grandTotal, 0);
+    const todayCard = todayBills.filter(b => b.paymentMethod === 'card').reduce((sum, b) => sum + b.grandTotal, 0);
+    const todayUpi = todayBills.filter(b => b.paymentMethod === 'upi').reduce((sum, b) => sum + b.grandTotal, 0);
+
     // Monthly Data Aggregation
     const monthlyBills = bills.filter(b => {
         const d = new Date(b.date);
@@ -24,6 +52,7 @@ export const Dashboard: React.FC = () => {
     });
 
     const monthlyDataMap: { [key: string]: { total: number, count: number } } = {};
+    const paymentMethodMap = { cash: 0, card: 0, upi: 0 };
 
     // Fill all days of the month with zero initially
     const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
@@ -38,6 +67,9 @@ export const Dashboard: React.FC = () => {
             monthlyDataMap[d].total += b.grandTotal;
             monthlyDataMap[d].count += 1;
         }
+        if (Object.prototype.hasOwnProperty.call(paymentMethodMap, b.paymentMethod)) {
+            paymentMethodMap[b.paymentMethod as keyof typeof paymentMethodMap] += b.grandTotal;
+        }
     });
 
     const monthlyChartData = Object.entries(monthlyDataMap).map(([date, data]) => ({
@@ -48,6 +80,40 @@ export const Dashboard: React.FC = () => {
     })).sort((a, b) => a.day - b.day);
 
     const monthlyRevenue = monthlyBills.reduce((sum, b) => sum + b.grandTotal, 0);
+
+    const barChartData = {
+        labels: monthlyChartData.map(d => d.day),
+        datasets: [
+            {
+                label: 'Daily Sales',
+                data: monthlyChartData.map(d => d.total),
+                backgroundColor: 'rgba(139, 92, 246, 0.6)',
+                borderColor: 'rgb(139, 92, 246)',
+                borderWidth: 1,
+                borderRadius: 4,
+            },
+        ],
+    };
+
+    const pieChartData = {
+        labels: ['Cash', 'Card', 'UPI'],
+        datasets: [
+            {
+                data: [paymentMethodMap.cash, paymentMethodMap.card, paymentMethodMap.upi],
+                backgroundColor: [
+                    'rgba(34, 197, 94, 0.6)',
+                    'rgba(59, 130, 246, 0.6)',
+                    'rgba(168, 85, 247, 0.6)',
+                ],
+                borderColor: [
+                    'rgb(34, 197, 94)',
+                    'rgb(59, 130, 246)',
+                    'rgb(168, 85, 247)',
+                ],
+                borderWidth: 1,
+            },
+        ],
+    };
 
     return (
         <div className="space-y-6 pb-20">
@@ -75,44 +141,66 @@ export const Dashboard: React.FC = () => {
                 </div>
             </div>
 
-            {/* Monthly Sales Chart */}
-            <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 h-64">
-                <h3 className="text-sm font-semibold text-gray-700 mb-4">Monthly Sales Trend</h3>
-                <ResponsiveContainer width="100%" height="80%">
-                    <AreaChart data={monthlyChartData}>
-                        <defs>
-                            <linearGradient id="colorMonthTotal" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.8} />
-                                <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
-                            </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                        <XAxis
-                            dataKey="day"
-                            fontSize={10}
-                            tickLine={false}
-                            axisLine={false}
-                        />
-                        <YAxis
-                            fontSize={10}
-                            tickLine={false}
-                            axisLine={false}
-                        />
-                        <Tooltip
-                            contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                            formatter={(value: number | string | undefined) => [`${settings.currencySymbol}${Number(value || 0).toFixed(2)}`, 'Sales']}
-                            labelFormatter={(label) => `Day ${label}`}
-                        />
-                        <Area
-                            type="monotone"
-                            dataKey="total"
-                            stroke="#8b5cf6"
-                            strokeWidth={2}
-                            fillOpacity={1}
-                            fill="url(#colorMonthTotal)"
-                        />
-                    </AreaChart>
-                </ResponsiveContainer>
+            {/* Today's Payment Method Totals */}
+            <div className="grid grid-cols-3 gap-3">
+                <div className="bg-white p-3 rounded-xl shadow-sm border border-gray-100 flex flex-col items-center">
+                    <Banknote className="text-green-500 mb-1" size={18} />
+                    <span className="text-[10px] text-gray-400 font-bold uppercase">Cash</span>
+                    <span className="text-sm font-bold text-gray-700">{settings.currencySymbol}{todayCash.toFixed(0)}</span>
+                </div>
+                <div className="bg-white p-3 rounded-xl shadow-sm border border-gray-100 flex flex-col items-center">
+                    <CreditCard className="text-blue-500 mb-1" size={18} />
+                    <span className="text-[10px] text-gray-400 font-bold uppercase">Card</span>
+                    <span className="text-sm font-bold text-gray-700">{settings.currencySymbol}{todayCard.toFixed(0)}</span>
+                </div>
+                <div className="bg-white p-3 rounded-xl shadow-sm border border-gray-100 flex flex-col items-center">
+                    <Smartphone className="text-purple-500 mb-1" size={18} />
+                    <span className="text-[10px] text-gray-400 font-bold uppercase">UPI</span>
+                    <span className="text-sm font-bold text-gray-700">{settings.currencySymbol}{todayUpi.toFixed(0)}</span>
+                </div>
+            </div>
+
+            {/* Monthly Sales Chart (Bar) */}
+            <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                <h3 className="text-xs font-bold text-gray-400 uppercase mb-4">Daily Sales Trend</h3>
+                <div className="h-48">
+                    <Bar
+                        data={barChartData}
+                        options={{
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { display: false },
+                                tooltip: {
+                                    callbacks: {
+                                        label: (context) => `${settings.currencySymbol}${(context.parsed.y ?? 0).toFixed(2)}`
+                                    }
+                                }
+                            },
+                            scales: {
+                                x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+                                y: { grid: { color: '#f3f4f6' }, ticks: { font: { size: 10 } } }
+                            }
+                        }}
+                    />
+                </div>
+            </div>
+
+            {/* Payment Method Distribution (Pie) */}
+            <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                <h3 className="text-xs font-bold text-gray-400 uppercase mb-4">Payment Methods (Monthly)</h3>
+                <div className="h-48 flex justify-center">
+                    <Pie
+                        data={pieChartData}
+                        options={{
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { position: 'right', labels: { boxWidth: 12, font: { size: 10 } } }
+                            }
+                        }}
+                    />
+                </div>
             </div>
 
             {/* Day by Day Sales Report */}

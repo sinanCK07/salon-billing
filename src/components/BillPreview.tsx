@@ -17,7 +17,8 @@ export const BillPreview: React.FC<BillPreviewProps> = ({ bill, settings, onClos
         let msg = `🧾 *${settings.salonName}* Bill\n`;
         msg += `Bill No: ${bill.billNumber}\n`;
         msg += `Date: ${new Date(bill.date).toLocaleString()}\n`;
-        msg += `Customer: ${bill.customerName}\n\n`;
+        if (bill.customerName) msg += `Customer: ${bill.customerName}\n`;
+        msg += `Payment: ${bill.paymentMethod.toUpperCase()}\n\n`;
         msg += `*Services:*\n`;
 
         bill.services.forEach(s => {
@@ -30,10 +31,11 @@ export const BillPreview: React.FC<BillPreviewProps> = ({ bill, settings, onClos
         if (bill.discount > 0) msg += `Discount: -${settings.currencySymbol}${bill.discount}\n`;
         msg += `*Total Amount: ${settings.currencySymbol}${bill.grandTotal.toFixed(2)}*\n\n`;
 
-        if (settings.googleReviewLink) msg += `⭐ *Review us on Google:* ${settings.googleReviewLink}\n`;
-        if (settings.instagramLink) msg += `📸 *Follow us on Instagram:* ${settings.instagramLink}\n`;
+        if (settings.googleReviewLink) msg += `⭐ *Review us:* ${settings.googleReviewLink}\n`;
+        if (settings.instagramLink) msg += `📸 *Follow us:* ${settings.instagramLink}\n`;
 
-        msg += `\nThank you for visiting! ✨`;
+        msg += `\nThank you for visiting! ✨\n`;
+        msg += `_Contact 7356656682 for POS Website_`;
         return encodeURIComponent(msg);
     };
 
@@ -71,11 +73,18 @@ export const BillPreview: React.FC<BillPreviewProps> = ({ bill, settings, onClos
                                 GSTIN: {settings.gstNumber}
                             </div>
                         )}
+                        <div className="mt-2 text-xs font-bold text-gray-600 uppercase">
+                            Payment: {bill.paymentMethod}
+                        </div>
                     </div>
 
                     <div className="mb-4">
-                        <p className="font-semibold text-gray-700">Customer: {bill.customerName}</p>
-                        <p className="text-sm text-gray-500">Ph: {bill.customerWhatsApp}</p>
+                        {bill.customerName && (
+                            <p className="font-semibold text-gray-700">Customer: {bill.customerName}</p>
+                        )}
+                        {bill.customerWhatsApp && (
+                            <p className="text-sm text-gray-500">Ph: {bill.customerWhatsApp}</p>
+                        )}
                     </div>
 
                     <table className="w-full text-sm mb-4">
@@ -122,12 +131,17 @@ export const BillPreview: React.FC<BillPreviewProps> = ({ bill, settings, onClos
 
                     <div className="mt-8 pt-4 border-t border-gray-50 text-center">
                         <div className="text-[10px] text-gray-400 mb-2">
-                            Date: {new Date(bill.date).toLocaleDateString()}
-                            <br />
-                            Time: {new Date(bill.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            {new Date(bill.date).toLocaleDateString()} | {new Date(bill.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </div>
                         <p className="text-gray-800 font-medium">Thank You 🙏</p>
                     </div>
+
+                    {bill.offerImageBase64 && (
+                        <div className="mt-4 print:hidden">
+                            <p className="text-[10px] uppercase font-bold text-purple-600 mb-1 text-center italic">Special Offer Attached</p>
+                            <img src={bill.offerImageBase64} alt="Offer" className="w-full rounded-lg border border-purple-100" />
+                        </div>
+                    )}
                 </div>
 
                 {/* Actions Footer */}

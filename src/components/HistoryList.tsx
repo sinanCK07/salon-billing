@@ -1,12 +1,16 @@
 import React, { useState } from 'react';
 import { useBillHistory } from '../context/BillHistoryContext';
 import { useSalonSettings } from '../context/SalonSettingsContext';
-import { FileText, Trash2, Download } from 'lucide-react';
+import { FileText, Trash2, Download, CreditCard, Banknote, Smartphone, Eye } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { BillPreview } from './BillPreview';
+import type { Bill } from '../context/BillHistoryContext';
 
 export const HistoryList: React.FC = () => {
     const { bills, clearHistory } = useBillHistory();
     const { settings } = useSalonSettings();
+
+    const [selectedBill, setSelectedBill] = useState<Bill | null>(null);
 
     const [showClearConfirm, setShowClearConfirm] = useState(false);
 
@@ -98,19 +102,44 @@ export const HistoryList: React.FC = () => {
             <div className="space-y-3">
                 {bills.map((bill) => (
                     <div key={bill.id} className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+                        {/* Header: Customer & Amount */}
                         <div className="flex justify-between items-start mb-2">
                             <div>
-                                <h3 className="font-bold text-gray-800">{bill.customerName}</h3>
+                                <h3 className="font-bold text-gray-800">{bill.customerName || 'Walk-in Customer'}</h3>
                                 <p className="text-xs text-gray-500">#{bill.billNumber}</p>
                             </div>
                             <div className="text-right">
                                 <div className="font-bold text-purple-700">{settings.currencySymbol}{bill.grandTotal.toFixed(2)}</div>
-                                <div className="text-xs text-gray-400">{new Date(bill.date).toLocaleDateString()}</div>
+                                <div className="text-xs text-gray-400">
+                                    {new Date(bill.date).toLocaleDateString()}
+                                    <span className="ml-1 opacity-75">{new Date(bill.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                </div>
                             </div>
                         </div>
-                        <div className="text-sm text-gray-600 truncate">
+
+                        {/* Services List */}
+                        <div className="text-sm text-gray-600 truncate mb-2">
                             {bill.services.map(s => s.name).join(', ')}
                         </div>
+
+                        {/* Footer: Payment Method */}
+                        <div className="flex justify-between items-center pt-2 border-t border-gray-50 mt-2">
+                            <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-600">
+                                {bill.paymentMethod === 'cash' && <Banknote size={14} className="text-green-600" />}
+                                {bill.paymentMethod === 'card' && <CreditCard size={14} className="text-blue-600" />}
+                                {bill.paymentMethod === 'upi' && <Smartphone size={14} className="text-purple-600" />}
+                                <span className="uppercase">{bill.paymentMethod}</span>
+                            </div>
+
+                            <button
+                                onClick={() => setSelectedBill(bill)}
+                                className="text-purple-600 hover:bg-purple-50 p-1.5 rounded-full transition-colors"
+                                title="View Full Bill"
+                            >
+                                <Eye size={16} />
+                            </button>
+                        </div>
+
                         {bill.discountReason && (
                             <div className="mt-2 text-xs bg-purple-50 text-purple-600 px-2 py-1 rounded inline-block">
                                 Reason: {bill.discountReason}
@@ -118,6 +147,13 @@ export const HistoryList: React.FC = () => {
                         )}
                     </div>
                 ))}
+                {selectedBill && (
+                    <BillPreview
+                        bill={selectedBill}
+                        settings={settings}
+                        onClose={() => setSelectedBill(null)}
+                    />
+                )}
             </div>
         </div>
     );

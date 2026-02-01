@@ -15,6 +15,7 @@ export interface SalonSettings {
     googleReviewLink?: string;
     instagramLink?: string;
     settingsPassword?: string; // Hashed password
+    globalOfferImageBase64?: string;
 }
 
 const defaultSettings: SalonSettings = {
@@ -30,6 +31,7 @@ const defaultSettings: SalonSettings = {
     googleReviewLink: "",
     instagramLink: "",
     settingsPassword: "", // Default: No password
+    globalOfferImageBase64: "",
 };
 
 const SalonSettingsContext = createContext<{
@@ -46,6 +48,23 @@ export const SalonSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
     useEffect(() => {
         localStorage.setItem('salon_settings', JSON.stringify(settings));
     }, [settings]);
+
+    // Handle cross-tab synchronization
+    useEffect(() => {
+        const handleStorageChange = (e: StorageEvent) => {
+            if (e.key === 'salon_settings' && e.newValue) {
+                try {
+                    const newSettings = JSON.parse(e.newValue);
+                    setSettings(prev => ({ ...prev, ...newSettings }));
+                } catch (err) {
+                    console.error("Error parsing synced settings", err);
+                }
+            }
+        };
+
+        window.addEventListener('storage', handleStorageChange);
+        return () => window.removeEventListener('storage', handleStorageChange);
+    }, []);
 
     const updateSettings = async (newSettings: Partial<SalonSettings>) => {
         setSettings(prev => {

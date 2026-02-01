@@ -1,9 +1,19 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useSalonSettings } from '../context/SalonSettingsContext';
 import { useBillHistory } from '../context/BillHistoryContext';
 import type { Bill, ServiceItem } from '../context/BillHistoryContext';
-import { Plus, Trash2, ArrowRight } from 'lucide-react';
+import { Plus, Trash2, ArrowRight, CreditCard, Banknote, Smartphone, Printer, CheckCircle } from 'lucide-react';
 import { BillPreview } from './BillPreview';
+
+const SuccessToast = ({ show }: { show: boolean }) => {
+    if (!show) return null;
+    return (
+        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-green-600 text-white px-6 py-3 rounded-full shadow-xl flex items-center gap-2 z-50 animate-bounce">
+            <CheckCircle size={20} />
+            <span className="font-bold text-sm">Bill sent successfully! Ready for next.</span>
+        </div>
+    );
+};
 
 export const BillingForm: React.FC = () => {
     const { settings } = useSalonSettings();
@@ -15,6 +25,8 @@ export const BillingForm: React.FC = () => {
     const [customerPhone, setCustomerPhone] = useState('');
     const [billDate] = useState(new Date().toISOString().split('T')[0]);
     const [billTime] = useState(new Date().toTimeString().slice(0, 5));
+    const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'upi'>('cash');
+    const [showSuccessToast, setShowSuccessToast] = useState(false);
 
     // Services State
     const [services, setServices] = useState<ServiceItem[]>([
@@ -38,6 +50,38 @@ export const BillingForm: React.FC = () => {
 
     // Refs for auto-focus
     const serviceNameRefs = React.useRef<{ [key: string]: HTMLInputElement | null }>({});
+
+    // Auto-Ready & Return Detection
+    useEffect(() => {
+        // Check if we just returned from a WhatsApp flow
+        const wasWaiting = localStorage.getItem('waiting_for_whatsapp_return');
+        if (wasWaiting === 'true') {
+            // Push to next tick to avoid synchronous state update warning
+            setTimeout(() => {
+                setShowSuccessToast(true);
+                localStorage.removeItem('waiting_for_whatsapp_return');
+                setTimeout(() => setShowSuccessToast(false), 4000);
+            }, 0);
+        }
+
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                const waiting = localStorage.getItem('waiting_for_whatsapp_return');
+                if (waiting === 'true') {
+                    setShowSuccessToast(true);
+                    localStorage.removeItem('waiting_for_whatsapp_return');
+                    setTimeout(() => setShowSuccessToast(false), 4000);
+                }
+            }
+        };
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        window.addEventListener('focus', handleVisibilityChange);
+        return () => {
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+            window.removeEventListener('focus', handleVisibilityChange);
+        };
+    }, []);
 
     // Handlers
     const handleServiceChange = (id: string, field: keyof ServiceItem, value: string | number) => {
@@ -91,11 +135,29 @@ export const BillingForm: React.FC = () => {
         }
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleReset = () => {
+        setCustomerName('');
+        setCustomerPhone('');
+        const newId = Date.now().toString();
+        setServices([{ id: newId, name: '', price: 0, quantity: 1 }]);
+        setDiscount(0);
+        setDiscountReason('');
+        setGeneratedBill(null);
+        setPaymentMethod('cash');
+
+        // Auto-open Add Service (Ensure focus on the new row)
+        setTimeout(() => {
+            const firstInput = serviceNameRefs.current[newId];
+            if (firstInput) firstInput.focus();
+        }, 100);
+    }
+
+    const handleFinishBill = (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (!customerName) {
-            alert("Please enter customer name");
+        // 1. Validation
+        if (services.length === 0 || (services.length === 1 && !services[0].name)) {
+            alert("Please add at least one service");
             return;
         }
 
@@ -107,23 +169,20 @@ export const BillingForm: React.FC = () => {
             customerName,
             customerWhatsApp: customerPhone,
             date: `${billDate}T${billTime}:00`,
-            services: services.filter(s => s.name.trim() !== ''), // Filter  empty rows
+            services: services.filter(s => s.name.trim() !== ''),
             subtotal,
             taxAmount,
             discount,
             discountReason: discount > 0 ? discountReason : '',
-            grandTotal
+            grandTotal,
+            paymentMethod,
+            offerImageBase64: settings.globalOfferImageBase64
         };
 
-        if (newBill.services.length === 0) {
-            alert("Please add at least one service");
-            return;
-        }
-
+        // 2. Save Bill
         addBill(newBill);
-        setGeneratedBill(newBill);
 
-        // Auto Print if in Electron
+        // 3. Silent Print (if Electron) or just ready
         if (window.electron) {
             window.electron.printBill({
                 salonName: settings.salonName,
@@ -131,6 +190,7 @@ export const BillingForm: React.FC = () => {
                 gstNumber: settings.gstNumber,
                 billNumber: newBill.billNumber,
                 date: new Date(newBill.date).toLocaleString(),
+                paymentMethod: newBill.paymentMethod.toUpperCase(),
                 items: newBill.services.map(s => ({
                     name: s.name,
                     qty: s.quantity,
@@ -140,27 +200,42 @@ export const BillingForm: React.FC = () => {
                 tax: newBill.taxAmount.toFixed(2),
                 discount: newBill.discount.toFixed(2),
                 grandTotal: newBill.grandTotal.toFixed(2)
-            }).catch(err => {
-                alert("Printer Error: " + err);
-            });
+            }).catch(err => console.error("Print error:", err));
         }
+
+        // 4. Reset Form Immediately (Optimization: Prepared for next customer)
+        handleReset();
+
+        // 5. Construct WhatsApp Message & Redirect
+        const message = encodeURIComponent(
+            `🧾 *Bill #${newBill.billNumber}* - ${settings.salonName}\n` +
+            `📅 ${new Date(newBill.date).toLocaleString()}\n` +
+            `------------------------\n` +
+            newBill.services.map(s => `${s.name} x${s.quantity} = ${settings.currencySymbol}${(s.price * s.quantity).toFixed(2)}`).join('\n') +
+            `\n------------------------\n` +
+            `💵 *Total: ${settings.currencySymbol}${newBill.grandTotal.toFixed(2)}* (${newBill.paymentMethod.toUpperCase()})\n\n` +
+            `Thank you for visiting! ✨\n` +
+            `_Contact 7356656682 for POS Website_`
+        );
+
+        const phone = newBill.customerWhatsApp ? `91${newBill.customerWhatsApp}` : '';
+        const whatsappUrl = `https://wa.me/${phone}?text=${message}`;
+
+        // Set flag for return detection
+        localStorage.setItem('waiting_for_whatsapp_return', 'true');
+
+        // Redirect in same tab
+        window.location.href = whatsappUrl;
     };
 
-    const handleReset = () => {
-        setCustomerName('');
-        setCustomerPhone('');
-        setServices([{ id: Date.now().toString(), name: '', price: 0, quantity: 1 }]);
-        setDiscount(0);
-        setDiscountReason('');
-        setGeneratedBill(null);
-    }
 
     return (
         <>
+            <SuccessToast show={showSuccessToast} />
             <div className="space-y-6 pb-24">
                 <h2 className="text-xl font-bold text-gray-800">New Bill</h2>
 
-                <form onSubmit={handleSubmit} className="space-y-6">
+                <form onSubmit={handleFinishBill} className="space-y-6">
                     {/* Date and Time (Read-only) */}
                     <div className="flex gap-4 items-center bg-gray-50 p-3 rounded-lg border border-gray-100">
                         <div className="flex-1">
@@ -310,12 +385,38 @@ export const BillingForm: React.FC = () => {
                         </div>
                     </div>
 
+                    {/* Payment Method Selector */}
+                    <div className="bg-white p-4 rounded-lg shadow-sm space-y-3">
+                        <h3 className="font-semibold text-gray-700">Payment Method</h3>
+                        <div className="grid grid-cols-3 gap-2">
+                            {[
+                                { id: 'cash', label: 'Cash', icon: Banknote },
+                                { id: 'card', label: 'Card', icon: CreditCard },
+                                { id: 'upi', label: 'UPI', icon: Smartphone },
+                            ].map((method) => (
+                                <button
+                                    key={method.id}
+                                    type="button"
+                                    onClick={() => setPaymentMethod(method.id as 'cash' | 'card' | 'upi')}
+                                    className={`flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all ${paymentMethod === method.id
+                                        ? 'border-purple-600 bg-purple-50 text-purple-600'
+                                        : 'border-gray-100 bg-gray-50 text-gray-500 hover:border-gray-200'
+                                        }`}
+                                >
+                                    <method.icon size={20} className="mb-1" />
+                                    <span className="text-xs font-bold">{method.label}</span>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
                     <button
                         type="submit"
-                        className="w-full bg-purple-600 text-white py-4 rounded-xl font-bold text-lg hover:bg-purple-700 shadow-lg shadow-purple-200 transition-all flex items-center justify-center gap-2"
+                        className="w-full bg-green-600 text-white py-4 rounded-xl font-bold text-lg hover:bg-green-700 shadow-lg shadow-green-200 transition-all flex items-center justify-center gap-2 active:scale-95"
                     >
-                        <span>Generate Bill</span>
-                        <ArrowRight size={20} />
+                        <Printer size={20} />
+                        <span>Print & Finish Bill</span>
+                        <ArrowRight size={20} className="ml-2 opacity-50" />
                     </button>
                 </form>
             </div>

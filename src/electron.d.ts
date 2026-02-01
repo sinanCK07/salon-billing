@@ -4,6 +4,7 @@ export interface PrintBillData {
     gstNumber?: string;
     billNumber: string;
     date: string;
+    paymentMethod: string;
     items: { name: string; qty: number; total: number }[];
     subtotal: string;
     tax: string;
