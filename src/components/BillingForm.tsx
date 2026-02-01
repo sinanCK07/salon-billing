@@ -199,7 +199,9 @@ export const BillingForm: React.FC = () => {
                 subtotal: newBill.subtotal.toFixed(2),
                 tax: newBill.taxAmount.toFixed(2),
                 discount: newBill.discount.toFixed(2),
-                grandTotal: newBill.grandTotal.toFixed(2)
+                grandTotal: newBill.grandTotal.toFixed(2),
+                googleReviewLink: settings.googleReviewLink,
+                instagramLink: settings.instagramLink
             }).catch(err => console.error("Print error:", err));
         }
 
@@ -208,14 +210,20 @@ export const BillingForm: React.FC = () => {
 
         // 5. Construct WhatsApp Message & Redirect
         const message = encodeURIComponent(
-            `🧾 *Bill #${newBill.billNumber}* - ${settings.salonName}\n` +
-            `📅 ${new Date(newBill.date).toLocaleString()}\n` +
-            `------------------------\n` +
-            newBill.services.map(s => `${s.name} x${s.quantity} = ${settings.currencySymbol}${(s.price * s.quantity).toFixed(2)}`).join('\n') +
-            `\n------------------------\n` +
-            `💵 *Total: ${settings.currencySymbol}${newBill.grandTotal.toFixed(2)}* (${newBill.paymentMethod.toUpperCase()})\n\n` +
-            `Thank you for visiting! ✨\n` +
-            `_Contact 7356656682 for POS Website_`
+            `🧾 *${settings.salonName}* Bill\n` +
+            `Bill No: ${newBill.billNumber}\n` +
+            `Date: ${new Date(newBill.date).toLocaleString()}\n` +
+            (newBill.customerName ? `Customer: ${newBill.customerName}\n` : '') +
+            `\n*Services:*\n` +
+            newBill.services.map(s => `- ${s.name} (x${s.quantity}): ${settings.currencySymbol}${(s.price * s.quantity).toFixed(2)}`).join('\n') +
+            `\n\n----------------\n` +
+            `Subtotal: ${settings.currencySymbol}${newBill.subtotal.toFixed(2)}\n` +
+            (newBill.discount > 0 ? `Discount: -${settings.currencySymbol}${newBill.discount.toFixed(2)}\n` : '') +
+            (newBill.taxAmount > 0 ? `Tax (${settings.taxRate}%): ${settings.currencySymbol}${newBill.taxAmount.toFixed(2)}\n` : '') +
+            `*Total Amount: ${settings.currencySymbol}${newBill.grandTotal.toFixed(2)}*\n\n` +
+            (settings.instagramLink ? `📸 *Follow us on Instagram:* ${settings.instagramLink}\n` : '') +
+            (settings.googleReviewLink ? `⭐ *Rate us on Google:* ${settings.googleReviewLink}\n` : '') +
+            `\nThank you for visiting! ✨`
         );
 
         const phone = newBill.customerWhatsApp ? `91${newBill.customerWhatsApp}` : '';

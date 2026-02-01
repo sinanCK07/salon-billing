@@ -120,7 +120,25 @@ ipcMain.handle('print-bill', async (event, billData) => {
                     .text(`Time: ${billData.date.split(',')[1]?.trim() || ''}`)
                     .feed(1)
                     .style('b')
-                    .text('Thank You 🙏')
+                    .text('Thank You 🙏');
+
+                if (billData.googleReviewLink) {
+                    printer
+                        .style('n')
+                        .size(0, 0)
+                        .feed(1)
+                        .text(`Review us: ${billData.googleReviewLink.replace('https://', '')}`);
+                }
+
+                if (billData.instagramLink) {
+                    printer
+                        .style('n')
+                        .size(0, 0)
+                        .feed(1)
+                        .text(`Insta: @${billData.instagramLink.split('/').filter(Boolean).pop()}`);
+                }
+
+                printer
                     .feed(3)
                     .cut()
                     .close();

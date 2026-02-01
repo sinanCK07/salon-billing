@@ -10,6 +10,8 @@ export interface PrintBillData {
     tax: string;
     discount: string;
     grandTotal: string;
+    googleReviewLink?: string;
+    instagramLink?: string;
 }
 
 declare global {

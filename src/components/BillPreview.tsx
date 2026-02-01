@@ -18,24 +18,22 @@ export const BillPreview: React.FC<BillPreviewProps> = ({ bill, settings, onClos
         msg += `Bill No: ${bill.billNumber}\n`;
         msg += `Date: ${new Date(bill.date).toLocaleString()}\n`;
         if (bill.customerName) msg += `Customer: ${bill.customerName}\n`;
-        msg += `Payment: ${bill.paymentMethod.toUpperCase()}\n\n`;
-        msg += `*Services:*\n`;
+        msg += `\n*Services:*\n`;
 
         bill.services.forEach(s => {
-            msg += `- ${s.name} (x${s.quantity}): ${settings.currencySymbol}${s.price * s.quantity}\n`;
+            msg += `- ${s.name} (x${s.quantity}): ${settings.currencySymbol}${(s.price * s.quantity).toFixed(2)}\n`;
         });
 
         msg += `\n----------------\n`;
-        msg += `Subtotal: ${settings.currencySymbol}${bill.subtotal}\n`;
+        msg += `Subtotal: ${settings.currencySymbol}${bill.subtotal.toFixed(2)}\n`;
+        if (bill.discount > 0) msg += `Discount: -${settings.currencySymbol}${bill.discount.toFixed(2)}\n`;
         if (bill.taxAmount > 0) msg += `Tax (${settings.taxRate}%): ${settings.currencySymbol}${bill.taxAmount.toFixed(2)}\n`;
-        if (bill.discount > 0) msg += `Discount: -${settings.currencySymbol}${bill.discount}\n`;
         msg += `*Total Amount: ${settings.currencySymbol}${bill.grandTotal.toFixed(2)}*\n\n`;
 
-        if (settings.googleReviewLink) msg += `⭐ *Review us:* ${settings.googleReviewLink}\n`;
-        if (settings.instagramLink) msg += `📸 *Follow us:* ${settings.instagramLink}\n`;
+        if (settings.instagramLink) msg += `📸 *Follow us on Instagram:* ${settings.instagramLink}\n`;
+        if (settings.googleReviewLink) msg += `⭐ *Rate us on Google:* ${settings.googleReviewLink}\n`;
 
-        msg += `\nThank you for visiting! ✨\n`;
-        msg += `_Contact 7356656682 for POS Website_`;
+        msg += `\nThank you for visiting! ✨`;
         return encodeURIComponent(msg);
     };
 
@@ -142,6 +140,20 @@ export const BillPreview: React.FC<BillPreviewProps> = ({ bill, settings, onClos
                             <img src={bill.offerImageBase64} alt="Offer" className="w-full rounded-lg border border-purple-100" />
                         </div>
                     )}
+
+                    {/* Social/Review Links for Print */}
+                    <div className="mt-6 pt-4 border-t border-dashed text-center space-y-1">
+                        {settings.googleReviewLink && (
+                            <div className="text-[10px] text-gray-600">
+                                ⭐ Review us: {settings.googleReviewLink.replace('https://', '')}
+                            </div>
+                        )}
+                        {settings.instagramLink && (
+                            <div className="text-[10px] text-gray-600">
+                                📸 Instagram: @{settings.instagramLink.split('/').filter(Boolean).pop()}
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 {/* Actions Footer */}
