@@ -108,7 +108,13 @@ ipcMain.handle('print-bill', async (event, billData) => {
                     .align('rt')
                     .text(`Subtotal: ${billData.subtotal}`)
                     .text(`Tax: ${billData.tax}`)
-                    .text(`Discount: ${billData.discount}`)
+                    .text(`Discount: ${billData.discount}`);
+                    
+                if (billData.discountReason) {
+                    printer.text(`(Reason: ${billData.discountReason})`);
+                }
+
+                printer
                     .size(1, 1)
                     .style('b')
                     .text(`TOTAL: ${billData.grandTotal}`)

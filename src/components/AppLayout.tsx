@@ -29,7 +29,7 @@ export default function AppLayout({ children, currentView, onNavigate }: LayoutP
             </header>
 
             {/* Main Content */}
-            <main className="p-4 max-w-lg mx-auto">
+            <main className="w-full h-[calc(100vh-140px)] flex bg-gray-50 px-2 lg:px-4">
                 {children}
             </main>
 

@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useBillHistory } from '../context/BillHistoryContext';
 import { useSalonSettings } from '../context/SalonSettingsContext';
-import { TrendingUp, Banknote, CreditCard, Smartphone } from 'lucide-react';
+import { TrendingUp, Banknote, CreditCard, Smartphone, Users, Scissors, Share2, X } from 'lucide-react';
 import {
     Chart as ChartJS,
     CategoryScale,
@@ -32,6 +32,8 @@ export const Dashboard: React.FC = () => {
     const { bills } = useBillHistory();
     const { settings } = useSalonSettings();
 
+    const [showDailyReport, setShowDailyReport] = useState(false);
+
     // Calculate Today's Stats
     const now = new Date();
     const todayStr = now.toISOString().split('T')[0];
@@ -40,17 +42,18 @@ export const Dashboard: React.FC = () => {
 
     const todayBills = bills.filter(b => b.date.startsWith(todayStr));
     const todayRevenue = todayBills.reduce((sum, b) => sum + b.grandTotal, 0);
-
     const todayCash = todayBills.filter(b => b.paymentMethod === 'cash').reduce((sum, b) => sum + b.grandTotal, 0);
     const todayCard = todayBills.filter(b => b.paymentMethod === 'card').reduce((sum, b) => sum + b.grandTotal, 0);
     const todayUpi = todayBills.filter(b => b.paymentMethod === 'upi').reduce((sum, b) => sum + b.grandTotal, 0);
 
-    // Monthly Data Aggregation
+    // Employee Performance & Service Popularity (ALL TIME OR MONTHLY)
     const monthlyBills = bills.filter(b => {
         const d = new Date(b.date);
         return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
     });
 
+    const employeeRevenueMap: { [key: string]: number } = {};
+    const servicePopularityMap: { [key: string]: number } = {};
     const monthlyDataMap: { [key: string]: { total: number, count: number } } = {};
     const paymentMethodMap = { cash: 0, card: 0, upi: 0 };
 
@@ -62,15 +65,45 @@ export const Dashboard: React.FC = () => {
     }
 
     monthlyBills.forEach(b => {
+        // Daily total logic
         const d = b.date.split('T')[0];
         if (monthlyDataMap[d]) {
             monthlyDataMap[d].total += b.grandTotal;
             monthlyDataMap[d].count += 1;
         }
+
+        // Payment method logic
         if (Object.prototype.hasOwnProperty.call(paymentMethodMap, b.paymentMethod)) {
             paymentMethodMap[b.paymentMethod as keyof typeof paymentMethodMap] += b.grandTotal;
         }
+
+        // Employee logic
+        if (b.employeeName) {
+            employeeRevenueMap[b.employeeName] = (employeeRevenueMap[b.employeeName] || 0) + b.grandTotal;
+        } else {
+            employeeRevenueMap['Unassigned'] = (employeeRevenueMap['Unassigned'] || 0) + b.grandTotal;
+        }
+
+        // Services logic
+        b.services.forEach(s => {
+            servicePopularityMap[s.name] = (servicePopularityMap[s.name] || 0) + s.quantity;
+        });
     });
+
+    // Top Employee Today
+    const todayEmployeeRevenueMap: { [key: string]: number } = {};
+    const todayServiceCountMap: { [key: string]: number } = {};
+    todayBills.forEach(b => {
+        const emp = b.employeeName || 'Unassigned';
+        todayEmployeeRevenueMap[emp] = (todayEmployeeRevenueMap[emp] || 0) + b.grandTotal;
+        b.services.forEach(s => {
+            todayServiceCountMap[s.name] = (todayServiceCountMap[s.name] || 0) + s.quantity;
+        });
+    });
+
+    const topEmployeeToday = Object.entries(todayEmployeeRevenueMap).sort((a, b) => b[1] - a[1])[0];
+    const topServiceToday = Object.entries(todayServiceCountMap).sort((a, b) => b[1] - a[1])[0];
+
 
     const monthlyChartData = Object.entries(monthlyDataMap).map(([date, data]) => ({
         date,
@@ -81,43 +114,96 @@ export const Dashboard: React.FC = () => {
 
     const monthlyRevenue = monthlyBills.reduce((sum, b) => sum + b.grandTotal, 0);
 
+    // Chart Data Configs
     const barChartData = {
         labels: monthlyChartData.map(d => d.day),
-        datasets: [
-            {
-                label: 'Daily Sales',
-                data: monthlyChartData.map(d => d.total),
-                backgroundColor: 'rgba(139, 92, 246, 0.6)',
-                borderColor: 'rgb(139, 92, 246)',
-                borderWidth: 1,
-                borderRadius: 4,
-            },
-        ],
+        datasets: [{
+            label: 'Daily Sales',
+            data: monthlyChartData.map(d => d.total),
+            backgroundColor: 'rgba(139, 92, 246, 0.6)',
+            borderColor: 'rgb(139, 92, 246)',
+            borderWidth: 1,
+            borderRadius: 4,
+        }],
     };
 
-    const pieChartData = {
-        labels: ['Cash', 'Card', 'UPI'],
-        datasets: [
-            {
-                data: [paymentMethodMap.cash, paymentMethodMap.card, paymentMethodMap.upi],
-                backgroundColor: [
-                    'rgba(34, 197, 94, 0.6)',
-                    'rgba(59, 130, 246, 0.6)',
-                    'rgba(168, 85, 247, 0.6)',
-                ],
-                borderColor: [
-                    'rgb(34, 197, 94)',
-                    'rgb(59, 130, 246)',
-                    'rgb(168, 85, 247)',
-                ],
-                borderWidth: 1,
-            },
-        ],
+    const employeeSorted = Object.entries(employeeRevenueMap).sort((a, b) => b[1] - a[1]);
+    const employeeChartData = {
+        labels: employeeSorted.map(e => e[0]),
+        datasets: [{
+            label: 'Revenue by Employee',
+            data: employeeSorted.map(e => e[1]),
+            backgroundColor: 'rgba(236, 72, 153, 0.6)',
+            borderColor: 'rgb(236, 72, 153)',
+            borderWidth: 1,
+            borderRadius: 4,
+        }],
+    };
+
+    // Services Chart Data (Pie or Bar)
+    const servicesSorted = Object.entries(servicePopularityMap).sort((a, b) => b[1] - a[1]).slice(0, 5); // Top 5
+    const servicesChartData = {
+        labels: servicesSorted.map(s => s[0]),
+        datasets: [{
+            label: 'Most Used Services (Qty)',
+            data: servicesSorted.map(s => s[1]),
+            backgroundColor: [
+                'rgba(245, 158, 11, 0.6)',
+                'rgba(14, 165, 233, 0.6)',
+                'rgba(16, 185, 129, 0.6)',
+                'rgba(139, 92, 246, 0.6)',
+                'rgba(244, 63, 94, 0.6)'
+            ],
+            borderColor: [
+                'rgb(245, 158, 11)',
+                'rgb(14, 165, 233)',
+                'rgb(16, 185, 129)',
+                'rgb(139, 92, 246)',
+                'rgb(244, 63, 94)'
+            ],
+            borderWidth: 1,
+        }],
+    };
+
+    const handleSendDailyReport = () => {
+        const message = encodeURIComponent(
+            `📊 *Salon Daily Report*\n` +
+            `Date: ${now.toLocaleDateString()}\n\n` +
+            `*Summary*\n` +
+            `Total Bills: ${todayBills.length}\n` +
+            `Total Sales: ${settings.currencySymbol}${todayRevenue.toFixed(2)}\n\n` +
+            `*Payments*\n` +
+            `Cash: ${settings.currencySymbol}${todayCash.toFixed(2)}\n` +
+            `Card: ${settings.currencySymbol}${todayCard.toFixed(2)}\n` +
+            `UPI: ${settings.currencySymbol}${todayUpi.toFixed(2)}\n\n` +
+            `*Highlights*\n` +
+            `Top Employee: ${topEmployeeToday ? topEmployeeToday[0] : 'N/A'}\n` +
+            `Top Service: ${topServiceToday ? topServiceToday[0] : 'N/A'}`
+        );
+
+        // Remove non-numeric chars from owner whatsapp
+        const ownerPhone = settings.ownerWhatsApp ? settings.ownerWhatsApp.replace(/\D/g, '') : '';
+        if (!ownerPhone) {
+            alert("Please set Owner WhatsApp number in Settings.");
+            return;
+        }
+
+        const url = `https://wa.me/${ownerPhone}?text=${message}`;
+        window.open(url, '_blank');
     };
 
     return (
-        <div className="space-y-6 pb-20">
-            <h2 className="text-xl font-bold text-gray-800">Sales Dashboard</h2>
+        <div className="w-full flex justify-center pb-20 overflow-y-auto">
+            <div className="w-full max-w-5xl space-y-6 py-4">
+                <div className="flex justify-between items-center border-b pb-4">
+                <h2 className="text-xl font-bold text-gray-800">Sales Dashboard</h2>
+                <button 
+                    onClick={() => setShowDailyReport(true)}
+                    className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-md hover:bg-green-700 transition"
+                >
+                    Daily Closing Report
+                </button>
+            </div>
 
             {/* Quick Stats */}
             <div className="grid grid-cols-2 gap-4">
@@ -141,40 +227,22 @@ export const Dashboard: React.FC = () => {
                 </div>
             </div>
 
-            {/* Today's Payment Method Totals */}
-            <div className="grid grid-cols-3 gap-3">
-                <div className="bg-white p-3 rounded-xl shadow-sm border border-gray-100 flex flex-col items-center">
-                    <Banknote className="text-green-500 mb-1" size={18} />
-                    <span className="text-[10px] text-gray-400 font-bold uppercase">Cash</span>
-                    <span className="text-sm font-bold text-gray-700">{settings.currencySymbol}{todayCash.toFixed(0)}</span>
-                </div>
-                <div className="bg-white p-3 rounded-xl shadow-sm border border-gray-100 flex flex-col items-center">
-                    <CreditCard className="text-blue-500 mb-1" size={18} />
-                    <span className="text-[10px] text-gray-400 font-bold uppercase">Card</span>
-                    <span className="text-sm font-bold text-gray-700">{settings.currencySymbol}{todayCard.toFixed(0)}</span>
-                </div>
-                <div className="bg-white p-3 rounded-xl shadow-sm border border-gray-100 flex flex-col items-center">
-                    <Smartphone className="text-purple-500 mb-1" size={18} />
-                    <span className="text-[10px] text-gray-400 font-bold uppercase">UPI</span>
-                    <span className="text-sm font-bold text-gray-700">{settings.currencySymbol}{todayUpi.toFixed(0)}</span>
-                </div>
-            </div>
-
-            {/* Monthly Sales Chart (Bar) */}
+            {/* Employee Performance (Monthly) */}
             <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-                <h3 className="text-xs font-bold text-gray-400 uppercase mb-4">Daily Sales Trend</h3>
+                <div className="flex items-center gap-2 mb-4">
+                    <Users size={18} className="text-gray-400" />
+                    <h3 className="text-xs font-bold text-gray-500 uppercase">Employee Performance (Month)</h3>
+                </div>
                 <div className="h-48">
                     <Bar
-                        data={barChartData}
+                        data={employeeChartData}
                         options={{
                             responsive: true,
                             maintainAspectRatio: false,
                             plugins: {
                                 legend: { display: false },
                                 tooltip: {
-                                    callbacks: {
-                                        label: (context) => `${settings.currencySymbol}${(context.parsed.y ?? 0).toFixed(2)}`
-                                    }
+                                    callbacks: { label: (ctx) => `${settings.currencySymbol}${(ctx.parsed.y ?? 0).toFixed(2)}` }
                                 }
                             },
                             scales: {
@@ -186,76 +254,100 @@ export const Dashboard: React.FC = () => {
                 </div>
             </div>
 
-            {/* Payment Method Distribution (Pie) */}
-            <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-                <h3 className="text-xs font-bold text-gray-400 uppercase mb-4">Payment Methods (Monthly)</h3>
-                <div className="h-48 flex justify-center">
-                    <Pie
-                        data={pieChartData}
-                        options={{
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            plugins: {
-                                legend: { position: 'right', labels: { boxWidth: 12, font: { size: 10 } } }
-                            }
-                        }}
-                    />
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                 {/* Monthly Sales Chart (Bar) */}
+                <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                    <h3 className="text-xs font-bold text-gray-400 uppercase mb-4">Daily Sales Trend</h3>
+                    <div className="h-48">
+                        <Bar
+                            data={barChartData}
+                            options={{
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: { legend: { display: false } },
+                                scales: {
+                                    x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+                                    y: { grid: { color: '#f3f4f6' }, ticks: { font: { size: 10 } } }
+                                }
+                            }}
+                        />
+                    </div>
+                </div>
+
+                {/* Service Popularity (Pie) */}
+                <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                    <div className="flex items-center gap-2 mb-4">
+                        <Scissors size={18} className="text-gray-400" />
+                        <h3 className="text-xs font-bold text-gray-500 uppercase">Top Services (Month)</h3>
+                    </div>
+                    <div className="h-48 flex justify-center">
+                        <Pie
+                            data={servicesChartData}
+                            options={{
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: { legend: { position: 'right', labels: { boxWidth: 10, font: { size: 9 } } } }
+                            }}
+                        />
+                    </div>
                 </div>
             </div>
 
-            {/* Day by Day Sales Report */}
-            <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                <h3 className="text-sm font-semibold text-gray-700 mb-4">Day by Day Sales Report</h3>
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left text-sm">
-                        <thead className="text-xs text-gray-500 uppercase bg-gray-50">
-                            <tr>
-                                <th className="px-3 py-2">Date</th>
-                                <th className="px-3 py-2 text-right">Bills</th>
-                                <th className="px-3 py-2 text-right">Revenue</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100">
-                            {monthlyChartData.slice().reverse().filter(d => d.count > 0).map((row) => (
-                                <tr key={row.date} className="hover:bg-gray-50 transition-colors">
-                                    <td className="px-3 py-2 text-gray-700 font-medium">
-                                        {new Date(row.date).toLocaleDateString([], { day: '2-digit', month: 'short' })}
-                                    </td>
-                                    <td className="px-3 py-2 text-right text-gray-600">{row.count}</td>
-                                    <td className="px-3 py-2 text-right text-purple-600 font-bold">
-                                        {settings.currencySymbol}{row.total.toFixed(2)}
-                                    </td>
-                                </tr>
-                            ))}
-                            {monthlyBills.length === 0 && (
-                                <tr>
-                                    <td colSpan={3} className="px-3 py-4 text-center text-gray-400 italic">No sales this month</td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            {/* Recent Activity Mini-List */}
-            <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-                <h3 className="text-sm font-semibold text-gray-700 mb-3">Recent Sales</h3>
-                <div className="space-y-3">
-                    {bills.slice(0, 5).map(bill => (
-                        <div key={bill.id} className="flex justify-between items-center text-sm">
-                            <div>
-                                <p className="font-medium text-gray-800">{bill.customerName}</p>
-                                <p className="text-[10px] text-gray-400">
-                                    {new Date(bill.date).toLocaleDateString()} {new Date(bill.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                </p>
-                            </div>
-                            <span className="font-bold text-purple-600">{settings.currencySymbol}{bill.grandTotal.toFixed(2)}</span>
+            {/* Daily Report Modal */}
+            {showDailyReport && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-xl shadow-xl w-full max-w-sm flex flex-col overflow-hidden">
+                        <div className="bg-green-600 text-white p-4 flex justify-between items-center">
+                            <h3 className="font-bold text-lg">Daily Closing Report</h3>
+                            <button onClick={() => setShowDailyReport(false)} className="hover:bg-green-700 p-1 rounded-full text-green-100">
+                                <X size={20} />
+                            </button>
                         </div>
-                    ))}
-                    {bills.length === 0 && (
-                        <p className="text-xs text-gray-400 text-center py-2">No activity recorded yet.</p>
-                    )}
+
+                        <div className="p-5 space-y-4">
+                            <div className="text-center pb-4 border-b">
+                                <p className="text-xs text-gray-500 font-semibold mb-1">{now.toLocaleDateString()}</p>
+                                <p className="text-3xl font-bold text-gray-800">{settings.currencySymbol}{todayRevenue.toFixed(2)}</p>
+                                <p className="text-sm text-gray-500 mt-1">{todayBills.length} Bills Generated</p>
+                            </div>
+
+                            <div className="space-y-2 text-sm border-b pb-4">
+                                <div className="flex justify-between items-center p-2 bg-green-50 rounded text-green-800">
+                                    <span className="flex items-center gap-2"><Banknote size={16}/> Cash</span>
+                                    <span className="font-bold">{settings.currencySymbol}{todayCash.toFixed(2)}</span>
+                                </div>
+                                <div className="flex justify-between items-center p-2 bg-blue-50 rounded text-blue-800">
+                                    <span className="flex items-center gap-2"><CreditCard size={16}/> Card</span>
+                                    <span className="font-bold">{settings.currencySymbol}{todayCard.toFixed(2)}</span>
+                                </div>
+                                <div className="flex justify-between items-center p-2 bg-purple-50 rounded text-purple-800">
+                                    <span className="flex items-center gap-2"><Smartphone size={16}/> UPI</span>
+                                    <span className="font-bold">{settings.currencySymbol}{todayUpi.toFixed(2)}</span>
+                                </div>
+                            </div>
+
+                            <div className="space-y-3 pb-2">
+                                <div>
+                                    <p className="text-xs text-gray-400 uppercase font-bold mb-1">Top Employee</p>
+                                    <p className="text-gray-800 font-medium">{topEmployeeToday ? `${topEmployeeToday[0]} (${settings.currencySymbol}${topEmployeeToday[1]})` : 'None'}</p>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-gray-400 uppercase font-bold mb-1">Most Popular Service</p>
+                                    <p className="text-gray-800 font-medium">{topServiceToday ? `${topServiceToday[0]} (${topServiceToday[1]} times)` : 'None'}</p>
+                                </div>
+                            </div>
+
+                            <button
+                                onClick={handleSendDailyReport}
+                                className="w-full bg-[#25D366] hover:bg-[#128C7E] text-white py-3 rounded-lg flex items-center justify-center gap-2 font-bold shadow-md transition-colors"
+                            >
+                                <Share2 size={18} />
+                                Send to Owner WhatsApp
+                            </button>
+                        </div>
+                    </div>
                 </div>
+            )}
             </div>
         </div>
     );

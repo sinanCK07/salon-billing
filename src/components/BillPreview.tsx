@@ -26,7 +26,12 @@ export const BillPreview: React.FC<BillPreviewProps> = ({ bill, settings, onClos
 
         msg += `\n----------------\n`;
         msg += `Subtotal: ${settings.currencySymbol}${bill.subtotal.toFixed(2)}\n`;
-        if (bill.discount > 0) msg += `Discount: -${settings.currencySymbol}${bill.discount.toFixed(2)}\n`;
+        if (bill.discount > 0) {
+            msg += `Discount: -${settings.currencySymbol}${bill.discount.toFixed(2)}\n`;
+            if (bill.discountReason) {
+                msg += `(Reason: ${bill.discountReason})\n`;
+            }
+        }
         if (bill.taxAmount > 0) msg += `Tax (${settings.taxRate}%): ${settings.currencySymbol}${bill.taxAmount.toFixed(2)}\n`;
         msg += `*Total Amount: ${settings.currencySymbol}${bill.grandTotal.toFixed(2)}*\n\n`;
 
@@ -44,7 +49,38 @@ export const BillPreview: React.FC<BillPreviewProps> = ({ bill, settings, onClos
         }
         const cleanNumber = number.replace(/\D/g, ''); // Remove non-digits
         const url = `https://wa.me/${cleanNumber}?text=${generateMessage()}`;
+        
+        // Notify billing form that whatsapp is opened by setting local storage
+        localStorage.setItem('waiting_for_whatsapp_return', 'true');
         window.open(url, '_blank');
+    };
+
+    const handlePrint = () => {
+        if (window.electron) {
+            window.electron.printBill({
+                salonName: settings.salonName,
+                address: settings.address,
+                gstNumber: settings.gstNumber,
+                billNumber: bill.billNumber,
+                date: new Date(bill.date).toLocaleString(),
+                paymentMethod: bill.paymentMethod.toUpperCase(),
+                employeeName: bill.employeeName,
+                items: bill.services.map(s => ({
+                    name: s.name,
+                    qty: s.quantity,
+                    total: s.price * s.quantity
+                })),
+                subtotal: bill.subtotal.toFixed(2),
+                tax: bill.taxAmount.toFixed(2),
+                discount: bill.discount.toFixed(2),
+                discountReason: bill.discountReason,
+                grandTotal: bill.grandTotal.toFixed(2),
+                googleReviewLink: settings.googleReviewLink,
+                instagramLink: settings.instagramLink
+            }).catch(err => console.error("Print error:", err));
+        } else {
+            window.print();
+        }
     };
 
     return (
@@ -116,9 +152,16 @@ export const BillPreview: React.FC<BillPreviewProps> = ({ bill, settings, onClos
                             </div>
                         )}
                         {bill.discount > 0 && (
-                            <div className="flex justify-between text-green-600">
-                                <span>Discount</span>
-                                <span>-{settings.currencySymbol}{bill.discount.toFixed(2)}</span>
+                            <div className="flex flex-col text-green-600">
+                                <div className="flex justify-between">
+                                    <span>Discount</span>
+                                    <span>-{settings.currencySymbol}{bill.discount.toFixed(2)}</span>
+                                </div>
+                                {bill.discountReason && (
+                                    <span className="text-[10px] uppercase text-green-500 italic mt-0.5">
+                                        Reason: {bill.discountReason}
+                                    </span>
+                                )}
                             </div>
                         )}
                         <div className="flex justify-between font-bold text-lg text-gray-800 border-t border-dashed mt-2 pt-2">
@@ -158,29 +201,34 @@ export const BillPreview: React.FC<BillPreviewProps> = ({ bill, settings, onClos
 
                 {/* Actions Footer */}
                 <div className="p-4 bg-gray-50 border-t space-y-3">
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="flex gap-3">
+                        <button
+                            onClick={handlePrint}
+                            className="flex-1 bg-gray-800 hover:bg-gray-900 text-white py-3 rounded-lg flex items-center justify-center space-x-2 font-bold shadow-sm transition-all active:scale-95"
+                        >
+                            <Printer size={20} />
+                            <span>Print Receipt</span>
+                        </button>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-3 pt-2 border-t border-gray-200">
                         <button
                             onClick={() => handleShare(bill.customerWhatsApp)}
-                            className="bg-green-500 hover:bg-green-600 text-white py-2 rounded-lg flex items-center justify-center space-x-2 font-medium"
+                            className="bg-green-500 hover:bg-green-600 text-white py-2 rounded-lg flex items-center justify-center space-x-2 font-medium transition-all active:scale-95"
+                            title="Send bill to Customer"
                         >
                             <Share2 size={18} />
-                            <span>Customer</span>
+                            <span>To Customer</span>
                         </button>
                         <button
                             onClick={() => handleShare(settings.ownerWhatsApp)}
-                            className="bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-lg flex items-center justify-center space-x-1 font-medium"
+                            className="bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-lg flex items-center justify-center space-x-1 font-medium transition-all active:scale-95"
+                            title="Send bill to Owner"
                         >
                             <Share2 size={18} />
-                            <span>Owner</span>
+                            <span>To Owner</span>
                         </button>
                     </div>
-                    <button
-                        onClick={() => window.print()}
-                        className="w-full border border-gray-300 bg-white text-gray-700 py-2 rounded-lg flex items-center justify-center space-x-2 hover:bg-gray-50 text-sm"
-                    >
-                        <Printer size={16} />
-                        <span>Print Bill</span>
-                    </button>
                 </div>
             </div>
         </div>

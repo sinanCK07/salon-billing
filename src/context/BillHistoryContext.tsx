@@ -22,11 +22,14 @@ export interface Bill {
     grandTotal: number;
     paymentMethod: 'cash' | 'card' | 'upi';
     offerImageBase64?: string;
+    employeeName: string;
+    sharedStatus?: boolean;
 }
 
 const BillHistoryContext = createContext<{
     bills: Bill[];
     addBill: (bill: Bill) => void;
+    updateBill: (id: string, updatedBill: Partial<Bill>) => void;
     clearHistory: () => void;
 } | undefined>(undefined);
 
@@ -84,12 +87,16 @@ export const BillHistoryProvider: React.FC<{ children: React.ReactNode }> = ({ c
         */
     };
 
+    const updateBill = (id: string, updatedBill: Partial<Bill>) => {
+        setBills(prev => prev.map(bill => bill.id === id ? { ...bill, ...updatedBill } : bill));
+    };
+
     const clearHistory = () => {
         setBills([]);
     };
 
     return (
-        <BillHistoryContext.Provider value={{ bills, addBill, clearHistory }}>
+        <BillHistoryContext.Provider value={{ bills, addBill, updateBill, clearHistory }}>
             {children}
         </BillHistoryContext.Provider>
     );

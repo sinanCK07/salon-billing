@@ -69,8 +69,9 @@ export const SettingsForm: React.FC = () => {
     };
 
     return (
-        <div className="space-y-6">
-            <h2 className="text-xl font-bold text-gray-800">Salon Details</h2>
+        <div className="w-full flex justify-center pb-20 overflow-y-auto">
+            <div className="w-full max-w-5xl space-y-6 py-4">
+                <h2 className="text-xl font-bold text-gray-800">Salon Details</h2>
 
             <form onSubmit={handleSubmit} className="space-y-4">
                 {/* Salon Name */}
@@ -384,6 +385,7 @@ export const SettingsForm: React.FC = () => {
                     </div>
                 )}
             </form>
+            </div>
         </div>
     );
 };

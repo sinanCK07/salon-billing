@@ -12,6 +12,8 @@ export interface PrintBillData {
     grandTotal: string;
     googleReviewLink?: string;
     instagramLink?: string;
+    employeeName?: string;
+    discountReason?: string;
 }
 
 declare global {
