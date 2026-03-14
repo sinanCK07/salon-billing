@@ -236,9 +236,6 @@ export const BillingForm: React.FC = () => {
         // 2. Save Bill
         addBill(newBill);
 
-        // 4. Reset Form Immediately (Optimization: Prepared for next customer)
-        handleReset();
-
         // 5. Open Bill Preview Modal
         setGeneratedBill(newBill);
     };

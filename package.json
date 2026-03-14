@@ -3,19 +3,15 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "main": "electron/main.cjs",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview",
-    "electron:dev": "concurrently -k \"cross-env BROWSER=none npm run dev\" \"wait-on http://localhost:5173 && cross-env ELECTRON_START_URL=http://localhost:5173 electron .\""
+    "preview": "vite preview"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.18",
     "chart.js": "^4.5.1",
-    "escpos": "^3.0.0-alpha.6",
-    "escpos-usb": "^3.0.0-alpha.4",
     "firebase": "^12.7.0",
     "html2canvas": "^1.4.1",
     "lucide-react": "^0.561.0",
@@ -34,7 +30,6 @@
     "autoprefixer": "^10.4.23",
     "concurrently": "^9.2.1",
     "cross-env": "^10.1.0",
-    "electron": "^39.2.7",
     "eslint": "^9.39.1",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
