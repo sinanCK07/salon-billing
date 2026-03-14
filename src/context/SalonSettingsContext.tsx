@@ -10,7 +10,7 @@ export interface SalonSettings {
     taxRate: number; // percentage, e.g., 5 for 5%
     enableTax: boolean;
     currencySymbol: string;
-    predefinedServices: { id: string; name: string; price: number; category: string }[];
+    predefinedServices: { id: string; name: string; price: number; category: string; editable?: boolean }[];
     categories: string[];
     gstNumber?: string;
     googleReviewLink?: string;
@@ -28,8 +28,14 @@ const defaultSettings: SalonSettings = {
     taxRate: 0,
     enableTax: false,
     currencySymbol: "₹",
-    predefinedServices: [],
-    categories: ['Facial', 'Hair', 'Grooming'],
+    predefinedServices: [
+        { id: 'v1', name: 'STRAIGHTENING', price: 0, category: 'VARIABLE PRICES', editable: true },
+        { id: 'v2', name: 'SMOOTHENING', price: 0, category: 'VARIABLE PRICES', editable: true },
+        { id: 'v3', name: 'HAIR COLOURING', price: 0, category: 'VARIABLE PRICES', editable: true },
+        { id: 'v4', name: 'MAKE UP', price: 0, category: 'VARIABLE PRICES', editable: true },
+        { id: 'v5', name: 'TOUCH UP', price: 0, category: 'VARIABLE PRICES', editable: true },
+    ] as any,
+    categories: ['VARIABLE PRICES', 'Facial', 'Hair', 'Grooming'],
     gstNumber: "",
     googleReviewLink: "",
     instagramLink: "",
@@ -46,7 +52,26 @@ const SalonSettingsContext = createContext<{
 export const SalonSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [settings, setSettings] = useState<SalonSettings>(() => {
         const saved = localStorage.getItem('salon_settings');
-        return saved ? { ...defaultSettings, ...JSON.parse(saved) } : defaultSettings;
+        if (saved) {
+            const parsed = JSON.parse(saved) as SalonSettings;
+            
+            // Check if VARIABLE PRICES category is missing
+            if (!parsed.categories.includes('VARIABLE PRICES')) {
+                parsed.categories = ['VARIABLE PRICES', ...parsed.categories];
+            }
+            
+            // Collect existing variable price service IDs
+            const existingVIds = new Set(parsed.predefinedServices.map(s => s.id));
+            
+            // Add missing variable prices
+            const missingVariablePrices = defaultSettings.predefinedServices.filter(s => !existingVIds.has(s.id));
+            if (missingVariablePrices.length > 0) {
+                parsed.predefinedServices = [...missingVariablePrices, ...parsed.predefinedServices];
+            }
+            
+            return { ...defaultSettings, ...parsed };
+        }
+        return defaultSettings;
     });
 
     useEffect(() => {

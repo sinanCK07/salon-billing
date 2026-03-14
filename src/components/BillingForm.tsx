@@ -79,11 +79,8 @@ export const BillingForm: React.FC = () => {
 
     // Initialize all categories as expanded on first load
     useEffect(() => {
-        const initial: Record<string, boolean> = {};
-        Object.keys(categorizedServices).forEach(cat => {
-            initial[cat] = true;
-        });
-        setExpandedCategories(initial);
+        // Categories are closed by default now
+        setExpandedCategories({});
     }, [settings.predefinedServices.length === 0]); // only on init or if services were empty and now loaded
 
     const toggleCategory = (cat: string) => {
@@ -197,6 +194,7 @@ export const BillingForm: React.FC = () => {
         setGeneratedBill(null);
         setPaymentMethod('cash');
         setSelectedEmployee('');
+        setExpandedCategories({});
     }
 
     const handleFinishBill = (e: React.FormEvent) => {

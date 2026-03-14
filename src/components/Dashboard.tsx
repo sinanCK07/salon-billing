@@ -183,6 +183,25 @@ export const Dashboard: React.FC = () => {
         }],
     };
 
+    const employeeBillCountMap: { [key: string]: number } = {};
+    monthlyBills.forEach(b => {
+        const emp = b.employeeName || 'Unassigned';
+        employeeBillCountMap[emp] = (employeeBillCountMap[emp] || 0) + 1;
+    });
+
+    const employeeBillsSorted = Object.entries(employeeBillCountMap).sort((a, b) => b[1] - a[1]);
+    const employeeBillChartData = {
+        labels: employeeBillsSorted.map(e => e[0]),
+        datasets: [{
+            label: 'Bills Generated',
+            data: employeeBillsSorted.map(e => e[1]),
+            backgroundColor: 'rgba(59, 130, 246, 0.6)',
+            borderColor: 'rgb(59, 130, 246)',
+            borderWidth: 1,
+            borderRadius: 4,
+        }],
+    };
+
     const handleSendDailyReport = () => {
         let msg = `📊 *Salon Daily Report*\n`;
         msg += `Date: ${now.toLocaleDateString()}\n\n`;
@@ -263,30 +282,58 @@ export const Dashboard: React.FC = () => {
                 </div>
             </div>
 
-            {/* Employee Performance (Monthly) */}
-            <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-                <div className="flex items-center gap-2 mb-4">
-                    <Users size={18} className="text-gray-400" />
-                    <h3 className="text-xs font-bold text-gray-500 uppercase">Employee Performance (Month)</h3>
-                </div>
-                <div className="h-48">
-                    <Bar
-                        data={employeeChartData}
-                        options={{
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            plugins: {
-                                legend: { display: false },
-                                tooltip: {
-                                    callbacks: { label: (ctx) => `${settings.currencySymbol}${(ctx.parsed.y ?? 0).toFixed(2)}` }
+            {/* Employee Performance Charts */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                    <div className="flex items-center gap-2 mb-4">
+                        <Users size={18} className="text-gray-400" />
+                        <h3 className="text-xs font-bold text-gray-500 uppercase">Employee Revenue (Month)</h3>
+                    </div>
+                    <div className="h-48">
+                        <Bar
+                            data={employeeChartData}
+                            options={{
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: {
+                                    legend: { display: false },
+                                    tooltip: {
+                                        callbacks: { label: (ctx) => `${settings.currencySymbol}${(ctx.parsed.y ?? 0).toFixed(2)}` }
+                                    }
+                                },
+                                scales: {
+                                    x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+                                    y: { grid: { color: '#f3f4f6' }, ticks: { font: { size: 10 } } }
                                 }
-                            },
-                            scales: {
-                                x: { grid: { display: false }, ticks: { font: { size: 10 } } },
-                                y: { grid: { color: '#f3f4f6' }, ticks: { font: { size: 10 } } }
-                            }
-                        }}
-                    />
+                            }}
+                        />
+                    </div>
+                </div>
+
+                <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                    <div className="flex items-center gap-2 mb-4">
+                        <Banknote size={18} className="text-gray-400" />
+                        <h3 className="text-xs font-bold text-gray-500 uppercase">Bills per Employee (Month)</h3>
+                    </div>
+                    <div className="h-48">
+                        <Bar
+                            data={employeeBillChartData}
+                            options={{
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: {
+                                    legend: { display: false },
+                                    tooltip: {
+                                        callbacks: { label: (ctx) => `${(ctx.parsed.y ?? 0)} Bills` }
+                                    }
+                                },
+                                scales: {
+                                    x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+                                    y: { grid: { color: '#f3f4f6' }, ticks: { font: { size: 10 }, stepSize: 1 } }
+                                }
+                            }}
+                        />
+                    </div>
                 </div>
             </div>
 
