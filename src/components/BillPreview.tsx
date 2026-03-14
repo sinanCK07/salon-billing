@@ -38,6 +38,7 @@ export const BillPreview: React.FC<BillPreviewProps> = ({ bill, settings, onClos
         if (settings.instagramLink) msg += `📸 *Follow us on Instagram:* ${settings.instagramLink}\n`;
         if (settings.googleReviewLink) msg += `⭐ *Rate us on Google:* ${settings.googleReviewLink}\n`;
 
+        msg += `\n*FOR BOOKING: +91 7994214102*\n`;
         msg += `\nThank you for visiting! ✨`;
         return encodeURIComponent(msg);
     };
@@ -175,6 +176,9 @@ export const BillPreview: React.FC<BillPreviewProps> = ({ bill, settings, onClos
                             {new Date(bill.date).toLocaleDateString()} | {new Date(bill.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </div>
                         <p className="text-gray-800 font-medium">Thank You 🙏</p>
+                        <p className="text-[10px] font-bold text-gray-700 mt-1 uppercase tracking-wider">
+                            FOR BOOKING: +91 7994214102
+                        </p>
                     </div>
 
                     {bill.offerImageBase64 && (

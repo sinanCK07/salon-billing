@@ -13,7 +13,11 @@ export const SettingsForm: React.FC = () => {
     const hasUnsavedChanges = JSON.stringify(formData) !== JSON.stringify(settings);
 
     // Service Menu State
-    const [newService, setNewService] = useState({ name: '', price: '' });
+    const [newService, setNewService] = useState({ name: '', price: '', category: settings.categories?.[0] || 'Grooming' });
+    const [newCategory, setNewCategory] = useState('');
+    const [editingService, setEditingService] = useState<{ id: string, name: string, price: string } | null>(null);
+    const [isAddingService, setIsAddingService] = useState(false);
+    const [isAddingCategory, setIsAddingCategory] = useState(false);
 
     const handleAddService = () => {
         if (newService.name && newService.price) {
@@ -24,11 +28,36 @@ export const SettingsForm: React.FC = () => {
                     {
                         id: Date.now().toString(),
                         name: newService.name,
-                        price: parseFloat(newService.price)
+                        price: parseFloat(newService.price),
+                        category: newService.category || 'General'
                     }
                 ]
             }));
-            setNewService({ name: '', price: '' });
+            setNewService({ name: '', price: '', category: formData.categories?.[0] || 'Grooming' });
+            setIsAddingService(false);
+        }
+    };
+
+    const handleAddCategory = () => {
+        if (newCategory.trim() && !formData.categories.includes(newCategory.trim())) {
+            setFormData(prev => ({
+                ...prev,
+                categories: [...prev.categories, newCategory.trim()]
+            }));
+            setNewCategory('');
+            setIsAddingCategory(false);
+        }
+    };
+
+    const handleUpdatePrice = () => {
+        if (editingService && editingService.price !== '') {
+            setFormData(prev => ({
+                ...prev,
+                predefinedServices: prev.predefinedServices.map(s => 
+                    s.id === editingService.id ? { ...s, price: parseFloat(editingService.price) } : s
+                )
+            }));
+            setEditingService(null);
         }
     };
 
@@ -204,55 +233,249 @@ export const SettingsForm: React.FC = () => {
                     />
                 </div>
 
-                {/* Service Menu Management */}
-                <div className="bg-white p-4 border rounded-lg space-y-4">
-                    <h3 className="font-semibold text-gray-700">Service Menu</h3>
-
-                    <div className="flex gap-2">
-                        <input
-                            type="text"
-                            placeholder="Service Name"
-                            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm"
-                            value={newService.name}
-                            onChange={(e) => setNewService(prev => ({ ...prev, name: e.target.value }))}
-                        />
-                        <input
-                            type="number"
-                            placeholder="Price"
-                            className="w-24 px-4 py-2 border border-gray-300 rounded-lg text-sm"
-                            value={newService.price}
-                            onChange={(e) => setNewService(prev => ({ ...prev, price: e.target.value }))}
-                        />
-                        <button
-                            type="button"
-                            onClick={handleAddService}
-                            className="px-4 py-2 bg-purple-100 text-purple-700 rounded-lg font-medium text-sm hover:bg-purple-200"
-                        >
-                            Add
-                        </button>
+                {/* Service & Category Management */}
+                <div className="bg-white p-6 border rounded-xl shadow-sm space-y-6">
+                    <div className="flex justify-between items-center border-b pb-4">
+                        <h3 className="font-bold text-gray-800 text-lg">Service Management</h3>
+                        <div className="flex gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setIsAddingCategory(true)}
+                                className="px-4 py-2 bg-purple-50 text-purple-700 rounded-lg font-bold text-xs hover:bg-purple-100 transition border border-purple-100"
+                            >
+                                Add Category
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setIsAddingService(true)}
+                                className="px-4 py-2 bg-purple-600 text-white rounded-lg font-bold text-xs hover:bg-purple-700 transition shadow-lg shadow-purple-100"
+                            >
+                                Add New Service
+                            </button>
+                        </div>
                     </div>
 
-                    <div className="space-y-2 max-h-60 overflow-y-auto">
-                        {formData.predefinedServices?.map(service => (
-                            <div key={service.id} className="flex justify-between items-center bg-gray-50 p-2 rounded">
-                                <span className="text-sm font-medium">{service.name}</span>
-                                <div className="flex items-center gap-4">
-                                    <span className="text-sm text-gray-600">{formData.currencySymbol}{service.price}</span>
+                    {/* Category List */}
+                    <div className="space-y-3">
+                        <label className="block text-xs font-bold text-gray-400 uppercase">Categories</label>
+                        <div className="flex flex-wrap gap-2">
+                            {formData.categories?.map(cat => (
+                                <span key={cat} className="bg-purple-50 text-purple-700 px-3 py-1 rounded-full text-xs font-bold border border-purple-100 flex items-center gap-2">
+                                    {cat}
+                                    <button 
+                                        type="button"
+                                        onClick={() => {
+                                            if (confirm(`Remove category "${cat}"? Services in this category will stay but lose their label.`)) {
+                                                setFormData(prev => ({
+                                                    ...prev,
+                                                    categories: prev.categories.filter(c => c !== cat)
+                                                }));
+                                            }
+                                        }}
+                                        className="hover:text-red-500"
+                                    >
+                                        ×
+                                    </button>
+                                </span>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Services List Table */}
+                    <div className="overflow-x-auto rounded-xl border border-gray-100 mt-4">
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="bg-gray-50">
+                                    <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase">Service Name</th>
+                                    <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase">Category</th>
+                                    <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase">Price</th>
+                                    <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {formData.predefinedServices?.map(service => (
+                                    <tr key={service.id} className="border-t border-gray-50 hover:bg-gray-50/50 transition-colors">
+                                        <td className="px-4 py-3 text-sm font-medium text-gray-800">{service.name}</td>
+                                        <td className="px-4 py-3">
+                                            <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded text-[10px] font-bold uppercase border border-gray-200">
+                                                {service.category || 'General'}
+                                            </span>
+                                        </td>
+                                        <td className="px-4 py-3 text-sm font-bold text-purple-600">{formData.currencySymbol}{service.price}</td>
+                                        <td className="px-4 py-3 text-right space-x-3">
+                                            <button
+                                                type="button"
+                                                onClick={() => setEditingService({ id: service.id, name: service.name, price: service.price.toString() })}
+                                                className="text-blue-500 hover:text-blue-700 text-[11px] font-bold border-b border-transparent hover:border-blue-700"
+                                            >
+                                                EDIT PRICE
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleRemoveService(service.id)}
+                                                className="text-red-500 hover:text-red-700 text-[11px] font-bold border-b border-transparent hover:border-red-700"
+                                            >
+                                                DELETE
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                                {(!formData.predefinedServices || formData.predefinedServices.length === 0) && (
+                                    <tr>
+                                        <td colSpan={4} className="px-4 py-8 text-sm text-gray-400 text-center italic">No predefined services added.</td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                {/* Edit Price Modal */}
+                {editingService && (
+                    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+                        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in duration-200">
+                            <div className="bg-purple-600 p-4 text-center">
+                                <h3 className="text-white font-bold">Edit Service Price</h3>
+                            </div>
+                            <div className="p-6 space-y-4">
+                                <div>
+                                    <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Service Name</label>
+                                    <input type="text" readOnly className="w-full px-4 py-2 bg-gray-50 border rounded-lg text-sm text-gray-500 outline-none" value={editingService.name} />
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">New Price ({formData.currencySymbol})</label>
+                                    <input
+                                        type="number"
+                                        autoFocus
+                                        className="w-full px-4 py-2 border border-purple-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 outline-none"
+                                        value={editingService.price}
+                                        onChange={(e) => setEditingService(prev => prev ? { ...prev, price: e.target.value } : null)}
+                                    />
+                                </div>
+                                <div className="flex gap-2 pt-2">
                                     <button
                                         type="button"
-                                        onClick={() => handleRemoveService(service.id)}
-                                        className="text-red-500 hover:text-red-700 text-xs"
+                                        onClick={() => setEditingService(null)}
+                                        className="flex-1 py-2 border rounded-lg text-sm font-bold text-gray-500 hover:bg-gray-50"
                                     >
-                                        Remove
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={handleUpdatePrice}
+                                        className="flex-1 py-2 bg-purple-600 text-white rounded-lg text-sm font-bold hover:bg-purple-700"
+                                    >
+                                        Update
                                     </button>
                                 </div>
                             </div>
-                        ))}
-                        {(!formData.predefinedServices || formData.predefinedServices.length === 0) && (
-                            <p className="text-sm text-gray-400 text-center py-2">No predefined services added.</p>
-                        )}
+                        </div>
                     </div>
-                </div>
+                )}
+
+                {/* Add Category Modal */}
+                {isAddingCategory && (
+                    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+                        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in duration-200">
+                            <div className="bg-purple-600 p-4 text-center">
+                                <h3 className="text-white font-bold">Add New Category</h3>
+                            </div>
+                            <div className="p-6 space-y-4">
+                                <div>
+                                    <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Category Name</label>
+                                    <input
+                                        type="text"
+                                        placeholder="e.g. Skin Care, Spa..."
+                                        className="w-full px-4 py-2 border border-purple-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 outline-none uppercase"
+                                        value={newCategory}
+                                        onChange={(e) => setNewCategory(e.target.value)}
+                                        autoFocus
+                                    />
+                                </div>
+                                <div className="flex gap-2 pt-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsAddingCategory(false)}
+                                        className="flex-1 py-2 border rounded-lg text-sm font-bold text-gray-500 hover:bg-gray-50"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={handleAddCategory}
+                                        className="flex-1 py-2 bg-purple-600 text-white rounded-lg text-sm font-bold hover:bg-purple-700"
+                                    >
+                                        Add Category
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Add Service Modal */}
+                {isAddingService && (
+                    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+                        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in duration-200">
+                                <div className="bg-purple-600 p-4 text-center">
+                                    <h3 className="text-white font-bold">Add New Service</h3>
+                                </div>
+                                <div className="p-6 space-y-4">
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Service Name</label>
+                                        <input
+                                            type="text"
+                                            placeholder="Service Name"
+                                            className="w-full px-4 py-2 border border-purple-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 outline-none"
+                                            value={newService.name}
+                                            onChange={(e) => setNewService(prev => ({ ...prev, name: e.target.value }))}
+                                            autoFocus
+                                        />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Price ({formData.currencySymbol})</label>
+                                            <input
+                                                type="number"
+                                                className="w-full px-4 py-2 border border-purple-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 outline-none"
+                                                value={newService.price}
+                                                onChange={(e) => setNewService(prev => ({ ...prev, price: e.target.value }))}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Category</label>
+                                            <select
+                                                className="w-full px-4 py-2 border border-purple-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 outline-none bg-white font-bold"
+                                                value={newService.category}
+                                                onChange={(e) => setNewService(prev => ({ ...prev, category: e.target.value }))}
+                                            >
+                                                {formData.categories.map(cat => (
+                                                    <option key={cat} value={cat}>{cat}</option>
+                                                ))}
+                                                {!formData.categories.length && <option value="General">General</option>}
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-2 pt-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsAddingService(false)}
+                                            className="flex-1 py-2 border rounded-lg text-sm font-bold text-gray-500 hover:bg-gray-50"
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={handleAddService}
+                                            className="flex-1 py-2 bg-purple-600 text-white rounded-lg text-sm font-bold hover:bg-purple-700"
+                                        >
+                                            Add Service
+                                        </button>
+                                    </div>
+                                </div>
+                        </div>
+                    </div>
+                )}
 
                 {/* Global Offer Image Attachment */}
                 <div className="bg-white p-4 border rounded-lg space-y-3">

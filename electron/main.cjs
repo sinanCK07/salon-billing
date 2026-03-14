@@ -1,4 +1,7 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const electron = require('electron');
+console.log('DEBUG: require("electron") type:', typeof electron);
+console.log('DEBUG: require("electron") keys:', Object.keys(electron));
+const { app, BrowserWindow, ipcMain } = electron;
 const path = require('path');
 const escpos = require('escpos');
 // Install USB adapter
@@ -13,7 +16,7 @@ function createWindow() {
         webPreferences: {
             nodeIntegration: false, // Security best practice
             contextIsolation: true, // Security best practice
-            preload: path.join(__dirname, 'preload.js')
+            preload: path.join(__dirname, 'preload.cjs')
         }
     });
 

@@ -10,12 +10,14 @@ export interface SalonSettings {
     taxRate: number; // percentage, e.g., 5 for 5%
     enableTax: boolean;
     currencySymbol: string;
-    predefinedServices: { id: string; name: string; price: number }[];
+    predefinedServices: { id: string; name: string; price: number; category: string }[];
+    categories: string[];
     gstNumber?: string;
     googleReviewLink?: string;
     instagramLink?: string;
     settingsPassword?: string; // Hashed password
     globalOfferImageBase64?: string;
+    lastResetTime?: string; // ISO string for manual resetting of daily summary
 }
 
 const defaultSettings: SalonSettings = {
@@ -27,11 +29,13 @@ const defaultSettings: SalonSettings = {
     enableTax: false,
     currencySymbol: "₹",
     predefinedServices: [],
+    categories: ['Facial', 'Hair', 'Grooming'],
     gstNumber: "",
     googleReviewLink: "",
     instagramLink: "",
     settingsPassword: "", // Default: No password
     globalOfferImageBase64: "",
+    lastResetTime: "",
 };
 
 const SalonSettingsContext = createContext<{

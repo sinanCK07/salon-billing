@@ -30,6 +30,7 @@ const BillHistoryContext = createContext<{
     bills: Bill[];
     addBill: (bill: Bill) => void;
     updateBill: (id: string, updatedBill: Partial<Bill>) => void;
+    removeBills: (ids: string[]) => void;
     clearHistory: () => void;
 } | undefined>(undefined);
 
@@ -91,12 +92,16 @@ export const BillHistoryProvider: React.FC<{ children: React.ReactNode }> = ({ c
         setBills(prev => prev.map(bill => bill.id === id ? { ...bill, ...updatedBill } : bill));
     };
 
+    const removeBills = (ids: string[]) => {
+        setBills(prev => prev.filter(bill => !ids.includes(bill.id)));
+    };
+
     const clearHistory = () => {
         setBills([]);
     };
 
     return (
-        <BillHistoryContext.Provider value={{ bills, addBill, updateBill, clearHistory }}>
+        <BillHistoryContext.Provider value={{ bills, addBill, updateBill, removeBills, clearHistory }}>
             {children}
         </BillHistoryContext.Provider>
     );

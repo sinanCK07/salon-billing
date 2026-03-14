@@ -30,7 +30,7 @@ ChartJS.register(
 
 export const Dashboard: React.FC = () => {
     const { bills } = useBillHistory();
-    const { settings } = useSalonSettings();
+    const { settings, updateSettings } = useSalonSettings();
 
     const [showDailyReport, setShowDailyReport] = useState(false);
 
@@ -40,7 +40,18 @@ export const Dashboard: React.FC = () => {
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
 
-    const todayBills = bills.filter(b => b.date.startsWith(todayStr));
+    // Use lastResetTime if available for the daily report
+    const lastReset = settings.lastResetTime ? new Date(settings.lastResetTime) : null;
+    
+    const todayBills = bills.filter(b => {
+        const billDate = new Date(b.date);
+        // Start of day check
+        const isToday = b.date.startsWith(todayStr);
+        // Reset check (must be after reset time)
+        const isAfterReset = lastReset ? billDate > lastReset : true;
+        return isToday && isAfterReset;
+    });
+
     const todayRevenue = todayBills.reduce((sum, b) => sum + b.grandTotal, 0);
     const todayCash = todayBills.filter(b => b.paymentMethod === 'cash').reduce((sum, b) => sum + b.grandTotal, 0);
     const todayCard = todayBills.filter(b => b.paymentMethod === 'card').reduce((sum, b) => sum + b.grandTotal, 0);
@@ -101,8 +112,16 @@ export const Dashboard: React.FC = () => {
         });
     });
 
-    const topEmployeeToday = Object.entries(todayEmployeeRevenueMap).sort((a, b) => b[1] - a[1])[0];
+    const sortedTodayEmployees = Object.entries(todayEmployeeRevenueMap).sort((a, b) => b[1] - a[1]);
+    const topEmployeeToday = sortedTodayEmployees[0];
     const topServiceToday = Object.entries(todayServiceCountMap).sort((a, b) => b[1] - a[1])[0];
+
+    // Reset Logic
+    const handleResetToday = () => {
+        if (window.confirm("Are you sure you want to reset today's report data? (This will NOT delete your bill history)")) {
+            updateSettings({ lastResetTime: new Date().toISOString() });
+        }
+    };
 
 
     const monthlyChartData = Object.entries(monthlyDataMap).map(([date, data]) => ({
@@ -166,20 +185,29 @@ export const Dashboard: React.FC = () => {
     };
 
     const handleSendDailyReport = () => {
-        const message = encodeURIComponent(
-            `📊 *Salon Daily Report*\n` +
-            `Date: ${now.toLocaleDateString()}\n\n` +
-            `*Summary*\n` +
-            `Total Bills: ${todayBills.length}\n` +
-            `Total Sales: ${settings.currencySymbol}${todayRevenue.toFixed(2)}\n\n` +
-            `*Payments*\n` +
-            `Cash: ${settings.currencySymbol}${todayCash.toFixed(2)}\n` +
-            `Card: ${settings.currencySymbol}${todayCard.toFixed(2)}\n` +
-            `UPI: ${settings.currencySymbol}${todayUpi.toFixed(2)}\n\n` +
-            `*Highlights*\n` +
-            `Top Employee: ${topEmployeeToday ? topEmployeeToday[0] : 'N/A'}\n` +
-            `Top Service: ${topServiceToday ? topServiceToday[0] : 'N/A'}`
-        );
+        let msg = `📊 *Salon Daily Report*\n`;
+        msg += `Date: ${now.toLocaleDateString()}\n\n`;
+        msg += `*Summary*\n`;
+        msg += `Total Bills: ${todayBills.length}\n`;
+        msg += `Total Sales: ${settings.currencySymbol}${todayRevenue.toFixed(2)}\n\n`;
+        msg += `*Payments*\n`;
+        msg += `Cash: ${settings.currencySymbol}${todayCash.toFixed(2)}\n`;
+        msg += `Card: ${settings.currencySymbol}${todayCard.toFixed(2)}\n`;
+        msg += `UPI: ${settings.currencySymbol}${todayUpi.toFixed(2)}\n\n`;
+        
+        msg += `*Employee Performance Today*\n`;
+        sortedTodayEmployees.forEach(([name, rev]) => {
+            msg += `- ${name}: ${settings.currencySymbol}${rev.toFixed(2)}\n`;
+        });
+
+        if (topServiceToday) {
+            msg += `\n*Top Service:* ${topServiceToday[0]} (${topServiceToday[1]} times)\n`;
+        }
+        
+        msg += `\n----------------\n`;
+        msg += `Report Generated at: ${now.toLocaleTimeString()}`;
+
+        const message = encodeURIComponent(msg);
 
         // Remove non-numeric chars from owner whatsapp
         const ownerPhone = settings.ownerWhatsApp ? settings.ownerWhatsApp.replace(/\D/g, '') : '';
@@ -193,16 +221,25 @@ export const Dashboard: React.FC = () => {
     };
 
     return (
-        <div className="w-full flex justify-center pb-20 overflow-y-auto">
-            <div className="w-full max-w-5xl space-y-6 py-4">
-                <div className="flex justify-between items-center border-b pb-4">
+        <div className="w-full h-full flex justify-center pb-20 overflow-y-auto">
+            <div className="w-full max-w-5xl space-y-6 py-4 px-4">
+                <div className="flex flex-wrap gap-4 justify-between items-center border-b pb-4">
                 <h2 className="text-xl font-bold text-gray-800">Sales Dashboard</h2>
-                <button 
-                    onClick={() => setShowDailyReport(true)}
-                    className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-md hover:bg-green-700 transition"
-                >
-                    Daily Closing Report
-                </button>
+                <div className="flex gap-2">
+                    <button 
+                        onClick={() => setShowDailyReport(true)}
+                        className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-md hover:bg-green-700 transition"
+                    >
+                        Daily Closing Report
+                    </button>
+                    <button 
+                        onClick={handleResetToday}
+                        className="bg-gray-100 text-gray-600 hover:bg-gray-200 px-4 py-2 rounded-lg text-sm font-bold transition flex items-center gap-1"
+                        title="Reset Today's Report Counters"
+                    >
+                        <TrendingUp size={16} /> Reset Today
+                    </button>
+                </div>
             </div>
 
             {/* Quick Stats */}
@@ -211,7 +248,7 @@ export const Dashboard: React.FC = () => {
                     <div className="w-10 h-10 bg-green-50 rounded-full flex items-center justify-center mb-2">
                         <TrendingUp className="text-green-600" size={20} />
                     </div>
-                    <span className="text-xs text-gray-500 font-medium">Today's Total</span>
+                    <span className="text-xs text-gray-500 font-medium whitespace-nowrap">Today's Total</span>
                     <span className="text-lg font-bold text-gray-800">
                         {settings.currencySymbol}{todayRevenue.toFixed(2)}
                     </span>
@@ -220,7 +257,7 @@ export const Dashboard: React.FC = () => {
                     <div className="w-10 h-10 bg-purple-50 rounded-full flex items-center justify-center mb-2">
                         <TrendingUp className="text-purple-600" size={20} />
                     </div>
-                    <span className="text-xs text-gray-500 font-medium">Month Total</span>
+                    <span className="text-xs text-gray-500 font-medium whitespace-nowrap">Month Total</span>
                     <span className="text-lg font-bold text-gray-800">
                         {settings.currencySymbol}{monthlyRevenue.toFixed(2)}
                     </span>
@@ -296,53 +333,66 @@ export const Dashboard: React.FC = () => {
             {/* Daily Report Modal */}
             {showDailyReport && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-xl shadow-xl w-full max-w-sm flex flex-col overflow-hidden">
-                        <div className="bg-green-600 text-white p-4 flex justify-between items-center">
+                    <div className="bg-white rounded-xl shadow-xl w-full max-w-sm flex flex-col overflow-hidden max-h-[90vh]">
+                        <div className="bg-green-600 text-white p-4 flex justify-between items-center sticky top-0">
                             <h3 className="font-bold text-lg">Daily Closing Report</h3>
                             <button onClick={() => setShowDailyReport(false)} className="hover:bg-green-700 p-1 rounded-full text-green-100">
                                 <X size={20} />
                             </button>
                         </div>
 
-                        <div className="p-5 space-y-4">
+                        <div className="p-5 space-y-4 overflow-y-auto">
                             <div className="text-center pb-4 border-b">
-                                <p className="text-xs text-gray-500 font-semibold mb-1">{now.toLocaleDateString()}</p>
-                                <p className="text-3xl font-bold text-gray-800">{settings.currencySymbol}{todayRevenue.toFixed(2)}</p>
-                                <p className="text-sm text-gray-500 mt-1">{todayBills.length} Bills Generated</p>
+                                <p className="text-xs text-gray-500 font-semibold mb-1 uppercase tracking-widest">{now.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+                                <p className="text-4xl font-black text-gray-800 tracking-tight">{settings.currencySymbol}{todayRevenue.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                                <p className="text-xs font-bold text-green-600 mt-1 bg-green-50 inline-block px-2 py-0.5 rounded-full uppercase">{todayBills.length} Bills</p>
                             </div>
 
-                            <div className="space-y-2 text-sm border-b pb-4">
-                                <div className="flex justify-between items-center p-2 bg-green-50 rounded text-green-800">
-                                    <span className="flex items-center gap-2"><Banknote size={16}/> Cash</span>
-                                    <span className="font-bold">{settings.currencySymbol}{todayCash.toFixed(2)}</span>
+                            <div className="space-y-2 text-sm">
+                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Payment Breakup</p>
+                                <div className="flex justify-between items-center p-2.5 bg-gray-50 rounded-lg border border-gray-100">
+                                    <span className="flex items-center gap-2 text-gray-600 font-medium"><Banknote size={16} className="text-green-600"/> Cash</span>
+                                    <span className="font-bold text-gray-800">{settings.currencySymbol}{todayCash.toLocaleString()}</span>
                                 </div>
-                                <div className="flex justify-between items-center p-2 bg-blue-50 rounded text-blue-800">
-                                    <span className="flex items-center gap-2"><CreditCard size={16}/> Card</span>
-                                    <span className="font-bold">{settings.currencySymbol}{todayCard.toFixed(2)}</span>
+                                <div className="flex justify-between items-center p-2.5 bg-gray-50 rounded-lg border border-gray-100">
+                                    <span className="flex items-center gap-2 text-gray-600 font-medium"><CreditCard size={16} className="text-blue-600"/> Card</span>
+                                    <span className="font-bold text-gray-800">{settings.currencySymbol}{todayCard.toLocaleString()}</span>
                                 </div>
-                                <div className="flex justify-between items-center p-2 bg-purple-50 rounded text-purple-800">
-                                    <span className="flex items-center gap-2"><Smartphone size={16}/> UPI</span>
-                                    <span className="font-bold">{settings.currencySymbol}{todayUpi.toFixed(2)}</span>
+                                <div className="flex justify-between items-center p-2.5 bg-gray-50 rounded-lg border border-gray-100">
+                                    <span className="flex items-center gap-2 text-gray-600 font-medium"><Smartphone size={16} className="text-purple-600"/> UPI</span>
+                                    <span className="font-bold text-gray-800">{settings.currencySymbol}{todayUpi.toLocaleString()}</span>
                                 </div>
                             </div>
 
-                            <div className="space-y-3 pb-2">
-                                <div>
-                                    <p className="text-xs text-gray-400 uppercase font-bold mb-1">Top Employee</p>
-                                    <p className="text-gray-800 font-medium">{topEmployeeToday ? `${topEmployeeToday[0]} (${settings.currencySymbol}${topEmployeeToday[1]})` : 'None'}</p>
+                            <div className="pt-2">
+                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Employee Income Report</p>
+                                <div className="space-y-1.5">
+                                    {sortedTodayEmployees.length === 0 ? (
+                                        <p className="text-xs text-gray-400 italic">No earnings recorded today</p>
+                                    ) : (
+                                        sortedTodayEmployees.map(([name, rev]) => (
+                                            <div key={name} className="flex justify-between items-center text-xs py-1 border-b border-gray-50 last:border-0">
+                                                <span className="text-gray-600 font-semibold">{name}</span>
+                                                <span className="font-bold text-purple-700">{settings.currencySymbol}{rev.toLocaleString()}</span>
+                                            </div>
+                                        ))
+                                    )}
                                 </div>
-                                <div>
-                                    <p className="text-xs text-gray-400 uppercase font-bold mb-1">Most Popular Service</p>
-                                    <p className="text-gray-800 font-medium">{topServiceToday ? `${topServiceToday[0]} (${topServiceToday[1]} times)` : 'None'}</p>
-                                </div>
+                            </div>
+
+                            <div className="bg-purple-50 p-3 rounded-lg border border-purple-100">
+                                <p className="text-[10px] font-bold text-purple-400 uppercase tracking-widest mb-1">Day Highlight</p>
+                                <p className="text-xs font-medium text-purple-900">
+                                    {topServiceToday ? `Top Service: ${topServiceToday[0]} (${topServiceToday[1]} sales)` : 'No services logged today'}
+                                </p>
                             </div>
 
                             <button
                                 onClick={handleSendDailyReport}
-                                className="w-full bg-[#25D366] hover:bg-[#128C7E] text-white py-3 rounded-lg flex items-center justify-center gap-2 font-bold shadow-md transition-colors"
+                                className="w-full bg-[#25D366] hover:bg-[#128C7E] text-white py-3.5 rounded-xl flex items-center justify-center gap-2 font-bold shadow-lg transition-all transform active:scale-[0.98] mt-2"
                             >
                                 <Share2 size={18} />
-                                Send to Owner WhatsApp
+                                Send Report to Owner
                             </button>
                         </div>
                     </div>

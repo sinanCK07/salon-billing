@@ -3,7 +3,10 @@ import { useSalonSettings } from '../context/SalonSettingsContext';
 import { useBillHistory } from '../context/BillHistoryContext';
 import { useEmployees } from '../hooks/useEmployees';
 import type { Bill, ServiceItem } from '../context/BillHistoryContext';
-import { Trash2, CreditCard, Banknote, Smartphone, CheckCircle, UserPlus, Scissors } from 'lucide-react';
+import { 
+    Trash2, CreditCard, Banknote, Smartphone, CheckCircle, 
+    UserPlus, ChevronDown, ChevronRight, Search, PlusCircle 
+} from 'lucide-react';
 import { BillPreview } from './BillPreview';
 
 const SuccessToast = ({ show }: { show: boolean }) => {
@@ -16,39 +19,10 @@ const SuccessToast = ({ show }: { show: boolean }) => {
     );
 };
 
-// --- PREDEFINED SERVICES BY CATEGORY ---
-const CATEGORIZED_SERVICES = {
-    FACIAL: [
-        { name: 'ADVANCED PEARL', price: 1800, editable: false },
-        { name: 'ADVANCED GOLD', price: 2000, editable: false },
-        { name: 'PAPAYA', price: 1300, editable: false },
-        { name: 'O3+ DTAN', price: 1100, editable: false },
-        { name: 'O3+ FACIAL', price: 3500, editable: false },
-        { name: 'BRIDAL GLOW NATURES', price: 3500, editable: false },
-        { name: 'DTAN NATURES', price: 600, editable: false },
-        { name: 'RAAGA DETAN', price: 800, editable: false },
-        { name: 'AROMA MAGIC SKIN GLOW FACIAL', price: 3500, editable: false },
-        { name: 'BLEACH', price: 500, editable: false },
-        { name: 'CLEAN UP', price: 600, editable: false },
-    ],
-    HAIR: [
-        { name: 'HAIR SPA', price: 1000, editable: false },
-        { name: 'STRAIGHTENING', price: 0, editable: true },
-        { name: 'SMOOTHENING', price: 0, editable: true },
-        { name: 'HAIR', price: 200, editable: false },
-        { name: 'HAIR (CHILD)', price: 150, editable: false },
-        { name: 'HAIR WASHING', price: 50, editable: false },
-    ],
-    GROOMING: [
-        { name: 'BEARD', price: 100, editable: false },
-        { name: 'HEAD MASSAGE', price: 400, editable: false },
-    ]
-};
-
 export const BillingForm: React.FC = () => {
     const { settings } = useSalonSettings();
     const { addBill } = useBillHistory();
-    const { employees, addEmployee } = useEmployees();
+    const { employees, addEmployee, removeEmployee } = useEmployees();
     
     const [generatedBill, setGeneratedBill] = useState<Bill | null>(null);
 
@@ -70,14 +44,55 @@ export const BillingForm: React.FC = () => {
     const [discount, setDiscount] = useState(0);
     const [discountReason, setDiscountReason] = useState('');
 
+    // Service Search & Collapse State
+    const [searchTerm, setSearchTerm] = useState('');
+    const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
+
     // Custom Service State
-    const [isAddingCustomService, setIsAddingCustomService] = useState(false);
     const [customServiceName, setCustomServiceName] = useState('');
     const [customServicePrice, setCustomServicePrice] = useState<number | ''>('');
 
+    // Dynamic Categorized Services
+    const categorizedServices = useMemo(() => {
+        const groups: Record<string, any[]> = {};
+        const availableServices = settings.predefinedServices || [];
+        
+        availableServices.forEach((s: any) => {
+            const cat = s.category || 'General';
+            if (!groups[cat]) groups[cat] = [];
+            
+            // Filter by search term if active
+            if (searchTerm.trim() === '' || s.name.toLowerCase().includes(searchTerm.toLowerCase())) {
+                groups[cat].push(s);
+            }
+        });
+
+        // Remove empty containers if searching
+        if (searchTerm.trim() !== '') {
+            Object.keys(groups).forEach(key => {
+                if (groups[key].length === 0) delete groups[key];
+            });
+        }
+
+        return groups;
+    }, [settings.predefinedServices, searchTerm]);
+
+    // Initialize all categories as expanded on first load
+    useEffect(() => {
+        const initial: Record<string, boolean> = {};
+        Object.keys(categorizedServices).forEach(cat => {
+            initial[cat] = true;
+        });
+        setExpandedCategories(initial);
+    }, [settings.predefinedServices.length === 0]); // only on init or if services were empty and now loaded
+
+    const toggleCategory = (cat: string) => {
+        setExpandedCategories(prev => ({ ...prev, [cat]: !prev[cat] }));
+    };
+
     // Computed Totals
     const subtotal = useMemo(() => {
-        return services.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        return services.reduce((sum: number, item: ServiceItem) => sum + (item.price * item.quantity), 0);
     }, [services]);
 
     const taxAmount = useMemo(() => {
@@ -105,7 +120,8 @@ export const BillingForm: React.FC = () => {
             // ALT + C for Custom Service
             if (e.altKey && e.key.toLowerCase() === 'c') {
                 e.preventDefault();
-                setIsAddingCustomService(true);
+                const input = document.getElementById('custom-service-name');
+                if (input) (input as HTMLInputElement).focus();
             }
         };
 
@@ -121,11 +137,11 @@ export const BillingForm: React.FC = () => {
 
     // Handlers
     const handleServiceChange = (id: string, field: keyof ServiceItem, value: string | number) => {
-        setServices(prev => prev.map(s => s.id === id ? { ...s, [field]: value } : s));
+        setServices((prev: ServiceItem[]) => prev.map((s: ServiceItem) => s.id === id ? { ...s, [field]: value } : s));
     };
 
     const removeServiceRow = (id: string) => {
-        setServices(prev => prev.filter(s => s.id !== id));
+        setServices((prev: ServiceItem[]) => prev.filter((s: ServiceItem) => s.id !== id));
     };
 
     const handleAddPredefinedService = (service: { name: string, price: number, editable?: boolean }) => {
@@ -156,8 +172,7 @@ export const BillingForm: React.FC = () => {
         }
     };
 
-    const handleAddCustomServiceSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
+    const addInlineCustomService = () => {
         if (customServiceName.trim() && customServicePrice !== '' && Number(customServicePrice) >= 0) {
             setServices(prev => [
                 ...prev, 
@@ -170,7 +185,6 @@ export const BillingForm: React.FC = () => {
             ]);
             setCustomServiceName('');
             setCustomServicePrice('');
-            setIsAddingCustomService(false);
         }
     };
 
@@ -268,21 +282,35 @@ export const BillingForm: React.FC = () => {
 
                         <div className="grid grid-cols-2 gap-2">
                             {employees.map(emp => (
-                                <button
-                                    key={emp.id}
-                                    type="button"
-                                    onClick={() => setSelectedEmployee(selectedEmployee === emp.name ? '' : emp.name)}
-                                    className={`p-3 rounded-lg border-2 text-sm font-bold transition-all flex flex-col items-center justify-center gap-1 ${
-                                        selectedEmployee === emp.name 
-                                        ? 'border-purple-600 bg-purple-50 text-purple-700 shadow-sm scale-[1.02]' 
-                                        : 'border-gray-100 hover:border-purple-200 text-gray-600 hover:bg-gray-50'
-                                    }`}
-                                >
-                                    <span className="truncate w-full text-center">{emp.name}</span>
-                                    {selectedEmployee === emp.name && (
-                                        <div className="h-1 w-8 bg-purple-600 rounded-full mt-1"></div>
-                                    )}
-                                </button>
+                                <div key={emp.id} className="relative group">
+                                    <button
+                                        type="button"
+                                        onClick={() => setSelectedEmployee(selectedEmployee === emp.name ? '' : emp.name)}
+                                        className={`w-full p-3 rounded-lg border-2 text-sm font-bold transition-all flex flex-col items-center justify-center gap-1 ${
+                                            selectedEmployee === emp.name 
+                                            ? 'border-purple-600 bg-purple-50 text-purple-700 shadow-sm scale-[1.02]' 
+                                            : 'border-gray-100 hover:border-purple-200 text-gray-600 hover:bg-gray-50'
+                                        }`}
+                                    >
+                                        <span className="truncate w-full text-center">{emp.name}</span>
+                                        {selectedEmployee === emp.name && (
+                                            <div className="h-1 w-8 bg-purple-600 rounded-full mt-1"></div>
+                                        )}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (window.confirm(`Delete this employee: ${emp.name}?`)) {
+                                                removeEmployee(emp.id);
+                                            }
+                                        }}
+                                        className="absolute -top-1 -right-1 bg-red-100 text-red-600 p-1 rounded-full opacity-0 group-hover:opacity-100 hover:bg-red-600 hover:text-white transition-all shadow-sm z-10"
+                                        title="Delete Employee"
+                                    >
+                                        <Trash2 size={12} />
+                                    </button>
+                                </div>
                             ))}
                         </div>
                     </div>
@@ -325,19 +353,11 @@ export const BillingForm: React.FC = () => {
 
                             <div className="flex-1 border rounded-lg bg-gray-50 p-2 overflow-y-auto min-h-[150px]">
                                 {services.length === 0 ? (
-                                    <div className="h-[200px] flex flex-col items-center justify-center text-gray-400 opacity-60">
-                                        <Scissors size={32} className="mb-2" />
-                                        <p className="text-sm font-medium mb-1">No services added</p>
-                                        <button 
-                                            type="button"
-                                            onClick={() => setIsAddingCustomService(true)}
-                                            className="text-xs bg-purple-100 text-purple-700 px-3 py-1.5 rounded-full hover:bg-purple-200 transition font-bold"
-                                        >
-                                            + Add Custom
-                                        </button>
+                                    <div className="h-[100px] flex flex-col items-center justify-center text-gray-400 opacity-60 italic">
+                                        <p className="text-sm">No services added</p>
                                     </div>
                                 ) : (
-                                    <div className="space-y-2">
+                                    <div className="space-y-2 pb-2">
                                         {services.map((service) => (
                                             <div key={service.id} className="bg-white p-2 border rounded shadow-sm flex items-center justify-between gap-2">
                                                 <div className="flex-1 overflow-hidden">
@@ -364,6 +384,40 @@ export const BillingForm: React.FC = () => {
                                         ))}
                                     </div>
                                 )}
+
+                                {/* Persistent Custom Service Quick-Entry */}
+                                <div className="mt-2 p-3 bg-purple-50 rounded-lg border border-purple-100">
+                                    <div className="flex justify-between items-center mb-1">
+                                        <label className="text-[10px] font-bold text-purple-600 uppercase">Add Custom Service</label>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <input
+                                            id="custom-service-name"
+                                            type="text"
+                                            placeholder="Service Name"
+                                            className="flex-[2] px-2 py-1.5 border rounded text-xs focus:ring-1 focus:ring-purple-400 outline-none uppercase bg-white"
+                                            value={customServiceName}
+                                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCustomServiceName(e.target.value)}
+                                        />
+                                        <div className="relative flex-1">
+                                            <span className="absolute left-1.5 top-1.5 text-gray-400 text-[10px]">{settings.currencySymbol}</span>
+                                            <input
+                                                type="number"
+                                                placeholder="Price"
+                                                className="w-full pl-4 pr-1 py-1.5 border rounded text-xs focus:ring-1 focus:ring-purple-400 outline-none bg-white"
+                                                value={customServicePrice}
+                                                onChange={e => setCustomServicePrice(e.target.value === '' ? '' : parseFloat(e.target.value))}
+                                            />
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={addInlineCustomService}
+                                            className="bg-purple-600 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-purple-700 transition active:scale-95"
+                                        >
+                                            Add
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
 
                             {/* Totals & Payments */}
@@ -438,108 +492,77 @@ export const BillingForm: React.FC = () => {
 
                 {/* RIGHT PANEL: SERVICE CATALOG (35%) */}
                 <div className="w-[35%] flex-1 flex flex-col gap-4 overflow-y-auto">
-                    <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex-1 flex flex-col">
-                        <div className="sticky top-0 bg-white z-10 pb-2 border-b mb-4 flex justify-between items-center">
-                            <h3 className="font-bold text-gray-800">
-                                Services Catalog
+                    <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex-1 flex flex-col overflow-hidden">
+                        <div className="border-b mb-4 space-y-3">
+                            <h3 className="font-bold text-gray-800 flex items-center gap-2">
+                                <Search size={18} className="text-purple-600" /> Services Catalog
                             </h3>
-                            <button 
-                                onClick={() => setIsAddingCustomService(!isAddingCustomService)}
-                                className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded hover:bg-purple-200 transition font-bold"
-                            >
-                                {isAddingCustomService ? 'Cancel' : '+ Custom'}
-                            </button>
+                            <div className="relative pb-3">
+                                <input 
+                                    type="text"
+                                    placeholder="Search services..."
+                                    className="w-full pl-9 pr-4 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none bg-gray-50 transition-all"
+                                    value={searchTerm}
+                                    onChange={e => setSearchTerm(e.target.value)}
+                                />
+                                <Search size={16} className="absolute left-3 top-2.5 text-gray-400" />
+                            </div>
                         </div>
                         
-                        <div className="space-y-6 flex-1 overflow-y-auto pr-1">
-                            {/* CATEGORY LIST */}
-                            {Object.entries(CATEGORIZED_SERVICES).map(([category, items]) => (
-                                <div key={category}>
-                                    <h4 className="text-xs font-bold text-purple-600 uppercase mb-2 bg-purple-50 inline-block px-2 py-1 rounded">
-                                        {category}
-                                    </h4>
-                                    <div className="grid grid-cols-2 xl:grid-cols-3 gap-2">
-                                        {items.map((item, idx) => (
-                                            <button
-                                                key={idx}
-                                                type="button"
-                                                onClick={() => handleAddPredefinedService(item)}
-                                                className="text-left p-2 rounded-lg border border-gray-200 hover:border-purple-400 hover:bg-purple-50 hover:shadow-sm transition-all flex flex-col h-full bg-white active:scale-95 group"
-                                            >
-                                                <span className="text-[11px] font-bold text-gray-800 leading-tight flex-1">
-                                                    {item.name}
-                                                </span>
-                                                <span className="text-xs font-bold text-purple-600 mt-1">
-                                                    {item.editable ? 'Variable' : `${settings.currencySymbol}${item.price}`}
-                                                </span>
-                                            </button>
-                                        ))}
-                                    </div>
+                        <div className="space-y-3 flex-1 overflow-y-auto pr-1">
+                            {Object.entries(categorizedServices).map(([category, items]) => (
+                                <div key={category} className="border border-gray-100 rounded-xl overflow-hidden shadow-sm">
+                                    <button 
+                                        type="button"
+                                        onClick={() => toggleCategory(category)}
+                                        className="w-full flex justify-between items-center px-4 py-2.5 bg-gray-50 hover:bg-purple-50 transition-colors"
+                                    >
+                                        <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wider">
+                                            {category} <span className="ml-1 opacity-50 text-[10px]">({items.length})</span>
+                                        </h4>
+                                        {expandedCategories[category] ? <ChevronDown size={14} className="text-purple-600" /> : <ChevronRight size={14} className="text-gray-400" />}
+                                    </button>
+
+                                    {expandedCategories[category] && (
+                                        <div className="p-2 grid grid-cols-2 gap-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                                            {items.map((item) => (
+                                                <button
+                                                    key={item.id}
+                                                    type="button"
+                                                    onClick={() => handleAddPredefinedService(item)}
+                                                    className="text-left p-2.5 rounded-lg border border-gray-100 hover:border-purple-300 hover:bg-purple-50 hover:shadow-sm transition-all flex flex-col h-full bg-white active:scale-95 group relative overflow-hidden"
+                                                >
+                                                    <span className="text-[11px] font-bold text-gray-700 leading-tight flex-1 mb-1">
+                                                        {item.name}
+                                                    </span>
+                                                    <span className="text-xs font-bold text-purple-600">
+                                                        {settings.currencySymbol}{item.price}
+                                                    </span>
+                                                    <div className="absolute right-[-4px] bottom-[-4px] opacity-0 group-hover:opacity-10 transition-opacity">
+                                                        <PlusCircle size={32} />
+                                                    </div>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             ))}
+
+                            {Object.keys(categorizedServices).length === 0 && (
+                                <div className="text-center py-10 px-4">
+                                    <p className="text-gray-400 text-sm italic">
+                                        {searchTerm ? "No services match your search." : "No services configured yet."}
+                                    </p>
+                                    <p className="text-[10px] text-gray-300 mt-1 uppercase font-bold">Manage in Settings</p>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
 
             </div>
 
-            {/* CUSTOM SERVICE MODAL */}
-            {isAddingCustomService && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4">
-                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col animate-fadeIn">
-                        <div className="bg-purple-600 text-white p-4 text-center">
-                            <h3 className="font-bold text-lg">Add Custom Service</h3>
-                        </div>
-                        <form onSubmit={handleAddCustomServiceSubmit} className="p-6 flex flex-col gap-4">
-                            <div>
-                                <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Service Name</label>
-                                <input 
-                                    type="text" 
-                                    placeholder="e.g. SPECIAL BRIDAL MAKEUP" 
-                                    required
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none uppercase bg-gray-50"
-                                    value={customServiceName}
-                                    onChange={e => setCustomServiceName(e.target.value)}
-                                    autoFocus
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Price ({settings.currencySymbol})</label>
-                                <input 
-                                    type="number" 
-                                    placeholder="0" 
-                                    required
-                                    min="0"
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none bg-gray-50"
-                                    value={customServicePrice}
-                                    onChange={e => setCustomServicePrice(e.target.value === '' ? '' : Number(e.target.value))}
-                                />
-                            </div>
-                            
-                            <div className="flex gap-3 mt-4">
-                                <button 
-                                    type="button" 
-                                    onClick={() => {
-                                        setIsAddingCustomService(false);
-                                        setCustomServiceName('');
-                                        setCustomServicePrice('');
-                                    }}
-                                    className="flex-1 py-2.5 rounded-lg text-sm font-bold border border-gray-300 text-gray-700 hover:bg-gray-50 transition active:scale-95"
-                                >
-                                    Cancel
-                                </button>
-                                <button 
-                                    type="submit" 
-                                    disabled={!customServiceName.trim() || customServicePrice === ''}
-                                    className="flex-1 py-2.5 rounded-lg text-sm font-bold bg-purple-600 text-white shadow-md shadow-purple-200 hover:bg-purple-700 transition active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    Add Service
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
+
 
             {generatedBill && (
                 <BillPreview
