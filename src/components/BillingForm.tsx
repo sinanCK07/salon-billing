@@ -34,7 +34,7 @@ export const BillingForm: React.FC = () => {
     // Customer State
     const [customerName, setCustomerName] = useState('');
     const [customerPhone, setCustomerPhone] = useState('');
-    const [billDate] = useState(new Date().toISOString().split('T')[0]);
+    const [billDate] = useState(new Date().toLocaleDateString('en-CA')); // Local YYYY-MM-DD
     const [billTime] = useState(new Date().toTimeString().slice(0, 5));
     const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'upi'>('cash');
     const [showSuccessToast, setShowSuccessToast] = useState(false);

@@ -36,7 +36,7 @@ export const Dashboard: React.FC = () => {
 
     // Calculate Today's Stats
     const now = new Date();
-    const todayStr = now.toISOString().split('T')[0];
+    const todayStr = now.toLocaleDateString('en-CA'); // Local YYYY-MM-DD
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
 
