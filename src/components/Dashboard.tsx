@@ -113,7 +113,6 @@ export const Dashboard: React.FC = () => {
     });
 
     const sortedTodayEmployees = Object.entries(todayEmployeeRevenueMap).sort((a, b) => b[1] - a[1]);
-    const topEmployeeToday = sortedTodayEmployees[0];
     const topServiceToday = Object.entries(todayServiceCountMap).sort((a, b) => b[1] - a[1])[0];
 
     // Reset Logic
@@ -196,7 +195,7 @@ export const Dashboard: React.FC = () => {
         msg += `UPI: ${settings.currencySymbol}${todayUpi.toFixed(2)}\n\n`;
         
         msg += `*Employee Performance Today*\n`;
-        sortedTodayEmployees.forEach(([name, rev]) => {
+        (sortedTodayEmployees as [string, number][]).forEach(([name, rev]) => {
             msg += `- ${name}: ${settings.currencySymbol}${rev.toFixed(2)}\n`;
         });
 
@@ -370,7 +369,7 @@ export const Dashboard: React.FC = () => {
                                     {sortedTodayEmployees.length === 0 ? (
                                         <p className="text-xs text-gray-400 italic">No earnings recorded today</p>
                                     ) : (
-                                        sortedTodayEmployees.map(([name, rev]) => (
+                                        (sortedTodayEmployees as [string, number][]).map(([name, rev]) => (
                                             <div key={name} className="flex justify-between items-center text-xs py-1 border-b border-gray-50 last:border-0">
                                                 <span className="text-gray-600 font-semibold">{name}</span>
                                                 <span className="font-bold text-purple-700">{settings.currencySymbol}{rev.toLocaleString()}</span>
