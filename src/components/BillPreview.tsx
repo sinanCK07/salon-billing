@@ -2,6 +2,7 @@ import React, { useRef } from 'react';
 import type { Bill } from '../context/BillHistoryContext';
 import type { SalonSettings } from '../context/SalonSettingsContext';
 import { Share2, Printer, X } from 'lucide-react';
+import { sendWhatsAppMessage } from '../utils/whatsappApi';
 
 interface BillPreviewProps {
     bill: Bill;
@@ -43,17 +44,31 @@ export const BillPreview: React.FC<BillPreviewProps> = ({ bill, settings, onClos
         return encodeURIComponent(msg);
     };
 
-    const handleShare = (number: string) => {
+    const handleShare = async (number: string) => {
         if (!number) {
             alert("No WhatsApp number provided for this recipient.");
             return;
         }
-        const cleanNumber = number.replace(/\D/g, ''); // Remove non-digits
-        const url = `https://wa.me/${cleanNumber}?text=${generateMessage()}`;
         
-        // Notify billing form that whatsapp is opened by setting local storage
-        localStorage.setItem('waiting_for_whatsapp_return', 'true');
-        window.open(url, '_blank');
+        if (settings.whatsappApiProvider !== 'none') {
+            const res = await sendWhatsAppMessage(settings, {
+                to: number,
+                text: decodeURIComponent(generateMessage()),
+                mediaUrl: settings.globalOfferImageBase64 ? settings.globalOfferImageBase64 : undefined
+            });
+            if (res.success) {
+                alert("Bill sent successfully via API!");
+            } else {
+                alert("Failed to send via API: " + res.error);
+            }
+        } else {
+            const cleanNumber = number.replace(/\D/g, ''); // Remove non-digits
+            const url = `https://wa.me/${cleanNumber}?text=${generateMessage()}`;
+            
+            // Notify billing form that whatsapp is opened by setting local storage
+            localStorage.setItem('waiting_for_whatsapp_return', 'true');
+            window.open(url, '_blank');
+        }
     };
 
     const handlePrint = () => {

@@ -8,6 +8,7 @@ import {
     UserPlus, ChevronDown, ChevronRight, Search, PlusCircle 
 } from 'lucide-react';
 import { BillPreview } from './BillPreview';
+import { sendWhatsAppMessage } from '../utils/whatsappApi';
 
 const SuccessToast = ({ show }: { show: boolean }) => {
     if (!show) return null;
@@ -38,6 +39,7 @@ export const BillingForm: React.FC = () => {
     const [billTime] = useState(new Date().toTimeString().slice(0, 5));
     const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'upi'>('cash');
     const [showSuccessToast, setShowSuccessToast] = useState(false);
+    const [autoSendWhatsApp, setAutoSendWhatsApp] = useState(true);
 
     // Services State
     const [services, setServices] = useState<ServiceItem[]>([]);
@@ -233,6 +235,37 @@ export const BillingForm: React.FC = () => {
 
         // 2. Save Bill
         addBill(newBill);
+
+        // 3. Auto-send WhatsApp if API configured
+        if (autoSendWhatsApp && settings.whatsappApiProvider !== 'none' && customerPhone) {
+            let msg = `🧾 *${settings.salonName}* Bill\n`;
+            msg += `Bill No: ${newBill.billNumber}\n`;
+            msg += `Date: ${new Date(newBill.date).toLocaleString()}\n`;
+            if (newBill.customerName) msg += `Customer: ${newBill.customerName}\n`;
+            msg += `\n*Services:*\n`;
+            newBill.services.forEach(s => {
+                msg += `- ${s.name} (x${s.quantity}): ${settings.currencySymbol}${(s.price * s.quantity).toFixed(2)}\n`;
+            });
+            msg += `\n----------------\n`;
+            msg += `Subtotal: ${settings.currencySymbol}${newBill.subtotal.toFixed(2)}\n`;
+            if (newBill.discount > 0) msg += `Discount: -${settings.currencySymbol}${newBill.discount.toFixed(2)}\n`;
+            if (newBill.taxAmount > 0) msg += `Tax: ${settings.currencySymbol}${newBill.taxAmount.toFixed(2)}\n`;
+            msg += `*Total Amount: ${settings.currencySymbol}${newBill.grandTotal.toFixed(2)}*\n\n`;
+            msg += `Thank you for visiting! ✨`;
+
+            sendWhatsAppMessage(settings, {
+                to: customerPhone,
+                text: msg,
+                mediaUrl: settings.globalOfferImageBase64 ? settings.globalOfferImageBase64 : undefined // Note: Cloud API prefers public URLs.
+            }).then(res => {
+                if(res.success) {
+                    setShowSuccessToast(true);
+                    setTimeout(() => setShowSuccessToast(false), 3000);
+                } else {
+                    console.error("Auto-send failed", res.error);
+                }
+            });
+        }
 
         // 5. Open Bill Preview Modal
         setGeneratedBill(newBill);
@@ -471,6 +504,20 @@ export const BillingForm: React.FC = () => {
                                         </button>
                                     ))}
                                 </div>
+
+                                {settings.whatsappApiProvider !== 'none' && (
+                                    <div className="flex items-center justify-between px-2 py-1 bg-purple-50 rounded border border-purple-100">
+                                        <label className="text-xs font-bold text-purple-700 cursor-pointer flex-1">
+                                            Auto-send WhatsApp Bill via API
+                                        </label>
+                                        <input
+                                            type="checkbox"
+                                            className="w-4 h-4 text-purple-600 rounded"
+                                            checked={autoSendWhatsApp}
+                                            onChange={e => setAutoSendWhatsApp(e.target.checked)}
+                                        />
+                                    </div>
+                                )}
 
                                 <button
                                     type="submit"

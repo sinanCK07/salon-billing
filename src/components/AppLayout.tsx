@@ -1,11 +1,11 @@
 import React from 'react';
-import { Receipt, History, Settings, LayoutDashboard } from 'lucide-react';
+import { Receipt, History, Settings, LayoutDashboard, Megaphone } from 'lucide-react';
 import { useSalonSettings } from '../context/SalonSettingsContext';
 
 interface LayoutProps {
     children: React.ReactNode;
-    currentView: 'billing' | 'history' | 'settings' | 'dashboard';
-    onNavigate: (view: 'billing' | 'history' | 'settings' | 'dashboard') => void;
+    currentView: 'billing' | 'history' | 'settings' | 'dashboard' | 'marketing';
+    onNavigate: (view: 'billing' | 'history' | 'settings' | 'dashboard' | 'marketing') => void;
 }
 
 export default function AppLayout({ children, currentView, onNavigate }: LayoutProps) {
@@ -58,6 +58,14 @@ export default function AppLayout({ children, currentView, onNavigate }: LayoutP
                 >
                     <History size={24} />
                     <span className="text-xs font-medium mt-1">History</span>
+                </button>
+                <button
+                    onClick={() => onNavigate('marketing')}
+                    className={`flex flex-col items-center p-2 rounded-lg transition-colors ${currentView === 'marketing' ? 'text-purple-600' : 'text-gray-400 hover:text-gray-600'
+                        }`}
+                >
+                    <Megaphone size={24} />
+                    <span className="text-xs font-medium mt-1">Marketing</span>
                 </button>
                 <button
                     onClick={() => onNavigate('settings')}

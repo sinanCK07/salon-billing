@@ -7,12 +7,13 @@ import { HistoryList } from './components/HistoryList'
 import { SettingsForm } from './components/SettingsForm'
 import { SettingsLock } from './components/SettingsLock'
 import { Dashboard } from './components/Dashboard'
+import { MarketingDashboard } from './components/MarketingDashboard'
 
 // Placeholder components
 // All implemented
 
 function App() {
-  const [currentView, setCurrentView] = useState<'billing' | 'history' | 'settings' | 'dashboard'>('billing');
+  const [currentView, setCurrentView] = useState<'billing' | 'history' | 'settings' | 'dashboard' | 'marketing'>('billing');
 
   return (
     <SalonSettingsProvider>
@@ -32,6 +33,11 @@ function App() {
           {currentView === 'settings' && (
             <SettingsLock>
               <SettingsForm />
+            </SettingsLock>
+          )}
+          {currentView === 'marketing' && (
+            <SettingsLock>
+              <MarketingDashboard />
             </SettingsLock>
           )}
         </AppLayout>

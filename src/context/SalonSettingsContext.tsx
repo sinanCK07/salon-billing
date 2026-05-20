@@ -18,6 +18,9 @@ export interface SalonSettings {
     settingsPassword?: string; // Hashed password
     globalOfferImageBase64?: string;
     lastResetTime?: string; // ISO string for manual resetting of daily summary
+    whatsappApiProvider: 'meta' | 'twilio' | 'none';
+    whatsappAccessToken: string;
+    whatsappPhoneNumberId: string;
 }
 
 const defaultSettings: SalonSettings = {
@@ -42,6 +45,9 @@ const defaultSettings: SalonSettings = {
     settingsPassword: "", // Default: No password
     globalOfferImageBase64: "",
     lastResetTime: "",
+    whatsappApiProvider: 'none',
+    whatsappAccessToken: '',
+    whatsappPhoneNumberId: '',
 };
 
 const SalonSettingsContext = createContext<{
@@ -53,23 +59,35 @@ export const SalonSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
     const [settings, setSettings] = useState<SalonSettings>(() => {
         const saved = localStorage.getItem('salon_settings');
         if (saved) {
-            const parsed = JSON.parse(saved) as SalonSettings;
-            
-            // Check if VARIABLE PRICES category is missing
-            if (!parsed.categories.includes('VARIABLE PRICES')) {
-                parsed.categories = ['VARIABLE PRICES', ...parsed.categories];
+            try {
+                const parsed = JSON.parse(saved) as SalonSettings;
+                
+                const categories = parsed.categories || defaultSettings.categories;
+                const predefinedServices = parsed.predefinedServices || defaultSettings.predefinedServices;
+
+                let updatedCategories = [...categories];
+                if (!updatedCategories.includes('VARIABLE PRICES')) {
+                    updatedCategories = ['VARIABLE PRICES', ...updatedCategories];
+                }
+                
+                const existingVIds = new Set(predefinedServices.map(s => s.id));
+                
+                let updatedServices = [...predefinedServices];
+                const missingVariablePrices = defaultSettings.predefinedServices.filter(s => !existingVIds.has(s.id));
+                if (missingVariablePrices.length > 0) {
+                    updatedServices = [...missingVariablePrices, ...updatedServices];
+                }
+                
+                return { 
+                    ...defaultSettings, 
+                    ...parsed, 
+                    categories: updatedCategories, 
+                    predefinedServices: updatedServices 
+                };
+            } catch (e) {
+                console.error("Error loading settings from local storage, falling back to defaults", e);
+                return defaultSettings;
             }
-            
-            // Collect existing variable price service IDs
-            const existingVIds = new Set(parsed.predefinedServices.map(s => s.id));
-            
-            // Add missing variable prices
-            const missingVariablePrices = defaultSettings.predefinedServices.filter(s => !existingVIds.has(s.id));
-            if (missingVariablePrices.length > 0) {
-                parsed.predefinedServices = [...missingVariablePrices, ...parsed.predefinedServices];
-            }
-            
-            return { ...defaultSettings, ...parsed };
         }
         return defaultSettings;
     });

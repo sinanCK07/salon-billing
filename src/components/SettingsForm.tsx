@@ -71,8 +71,10 @@ export const SettingsForm: React.FC = () => {
     // Update effect to sync local state with context if needed (though usually form state drives itself)
     // Here we just initialize.
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, value, type, checked } = e.target;
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+        const target = e.target as HTMLInputElement;
+        const { name, value, type } = target;
+        const checked = target.checked;
         setFormData(prev => ({
             ...prev,
             [name]: type === 'checkbox' ? checked : value
@@ -476,6 +478,53 @@ export const SettingsForm: React.FC = () => {
                         </div>
                     </div>
                 )}
+
+                {/* WhatsApp Cloud API Settings */}
+                <div className="bg-white p-4 border rounded-lg space-y-3">
+                    <h3 className="font-semibold text-gray-700">WhatsApp API Configuration</h3>
+                    <p className="text-xs text-gray-500 mb-2">Configure this to enable automated background bill sending and bulk marketing messages.</p>
+                    
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">API Provider</label>
+                        <select
+                            name="whatsappApiProvider"
+                            value={formData.whatsappApiProvider}
+                            onChange={handleChange}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none bg-white"
+                        >
+                            <option value="none">Disabled (Manual 'wa.me' links)</option>
+                            <option value="meta">Meta Cloud API (Official)</option>
+                            <option value="twilio">Twilio API</option>
+                        </select>
+                    </div>
+
+                    {formData.whatsappApiProvider !== 'none' && (
+                        <div className="space-y-3 pt-2 border-t mt-2">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Access Token / Auth Token</label>
+                                <input
+                                    type="password"
+                                    name="whatsappAccessToken"
+                                    value={formData.whatsappAccessToken}
+                                    onChange={handleChange}
+                                    placeholder="Enter your API token..."
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:outline-none text-sm"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number ID (or Twilio Phone Number)</label>
+                                <input
+                                    type="text"
+                                    name="whatsappPhoneNumberId"
+                                    value={formData.whatsappPhoneNumberId}
+                                    onChange={handleChange}
+                                    placeholder="e.g. 1029384756..."
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:outline-none text-sm"
+                                />
+                            </div>
+                        </div>
+                    )}
+                </div>
 
                 {/* Global Offer Image Attachment */}
                 <div className="bg-white p-4 border rounded-lg space-y-3">
